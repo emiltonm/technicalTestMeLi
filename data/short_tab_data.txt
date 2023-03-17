@@ -1,0 +1,11 @@
+first_name	last_name	email	gender	birth_year	height
+Audie	Fidgett	afidgett0@usda.gov	F	2000	1.47
+Kathlin	Klimkov	kklimkov1@uol.com.br	F	1985	1.72
+Gard	Nenci	gnenci2@nytimes.com	M	2009	1.33
+Penrod	Bellino	pbellino3@sciencedirect.com	M	2012	1.96
+Nedda	Sergison	nsergison4@desdev.cn	F	1998	1.2
+Boyd	Oneill	boneill5@hexun.com	M	1993	1.17
+Ronda	Moulton	rmoulton6@bloglines.com	F	2007	1.32
+Sallee	Grafton-Herbert	sgraftonherbert7@arizona.edu	F	2009	1.88
+Viviyan	Dosdale	vdosdale8@studiopress.com	F	2009	1.9
+Chickie	Durtnall	cdurtnall9@nhs.uk	M	1999	1.12

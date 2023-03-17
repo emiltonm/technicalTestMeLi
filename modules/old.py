@@ -6,7 +6,7 @@ app = Flask(__name__)
 keys = []
 header_type = []
 data_error_lines = []
-
+error_messages=[]
 
 def conversion_type(str_value, convert_type):
     if (convert_type == "str"):
@@ -37,16 +37,17 @@ def conversion_type(str_value, convert_type):
 
 
 def get_data():
-    source_data = []
     path_script = Path(__file__).resolve().parent
     path_data = path_script.parent/'data'/config('DATA_FILE')
+    source_data = {}
     index_error = 0
     valid_row = True
     data_error_lines.clear()
 
     if not path_data.is_file():
         # Archivo no encontrado
-        return [None, "Archivo no encontrado Verifica la ruta y el nombre del archivo"]
+        error_messages.append("Archivo no encontrado Verifica la ruta y el nombre del archivo")
+        return None
 
     file = open(path_data, 'r')
 
