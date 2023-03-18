@@ -1,0 +1,1 @@
+cambiar el nombre del .env.data.example a .env.data
