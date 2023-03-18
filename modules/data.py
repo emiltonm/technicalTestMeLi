@@ -1,5 +1,5 @@
-from flask import Flask
-from decouple import config
+import re
+from decouple import Config, RepositoryEnv
 from pathlib import Path
 
 
@@ -23,11 +23,22 @@ class Data:
     __data_errors_lines: list = [int]
     __data_errors_messages: list = [int]
 
+    __field_template: str = '<unknown>'
+    __clip_start: int = 0
+    __clip_end: int = 0
+
     __data_frame: list = [dict]
+    __n_line: int = 0
 
     def __init__(self):
         # validar que el archivo de configuracion exista
-
+        config_file = Path(__file__).resolve().parent.parent/'.env.data'
+        print(config_file)
+        if self.__file_exist(config_file, "Archivo de configuracion data.env no encontrado"):
+            # Cargar variables de entorno desde un archivo específico
+            config = Config(RepositoryEnv(config_file))
+        else:
+            pass
         # configuracion de ruta del archivo
         self.__file_name = config('FILE_NAME')
         self.__file_path = Path(__file__).resolve(
@@ -63,76 +74,27 @@ class Data:
                 self.__size_field[i] = int(self.__size_field[i])
             else:
                 self.__size_field[i] = 0
+        self.__n_line = 0
+
+        self.__field_template = config('FIELD_TEMPLATE')
+        self.__clip_start = int(config('CLIP_START'))
+        self.__clip_end = int(config('CLIP_END'))
         # configuracion del manejo de errores
         self.__data_errors_messages.clear()
         self.__data_errors_lines.clear()
 
     def load_file(self):
-        raw_record: str = '<unknown>'
-        raw_fields: list = [str]
-        format_fields: list = [any]
-        format_record: dict = {str: any}
-        n_line: int = 0
-        if self.__file_exist():
+        if self.__file_exist(self.__full_path, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
             print("Archivo encontrado")
-            self.__raw_file = open(self.__full_path, 'r')
-            # si el archivo tiene cabecera le sumo a n_line
+            self.__raw_file = open(self.__full_path, 'r', encoding='utf-8')
+            # si el archivo tiene cabecera le sumo a self.__n_line
             if self.__headers_in_first_line:
-                n_line += 1
+                self.__n_line = 1
 
             if self.__is_tabulated:
-                print("Archivo tabulado")
-                self.__resolve_headers()
-
-                print("="*80)
-                format_record.clear()
-                for raw_record in self.__raw_file:
-                    raw_record = raw_record.strip()
-                    n_line += 1
-                    print(f"el raw record es: {raw_record}")
-                    raw_fields = self.__proccess_raw_record(raw_record)
-                    print(f"los campos divididos son: {raw_fields}")
-
-                    if len(self.__headers) != len(raw_fields):
-                        self.__report_error(
-                            n_line, f"El registro de la linea {n_line} no tiene la misma cantidad de campos que la cabecera")
-                        if self.__ignore_errors:
-                            continue
-                        else:
-                            self.__report_error(
-                                -1, "Se encontraron errores en el archivo y se ha configurado para que no se ignoren se detuvo la lectura del archivo en la linea {n_line}")
-                            break
-
-                    format_fields.clear()
-                    for index, fr in enumerate(raw_fields):
-                        field = fr
-                        # realizo la conversion de tipos y lo almaceno format fields
-                        if self.__apply_types:
-                            field = self.__conversion_type(
-                                fr, self.__headers_type[index])
-                        if field is None:
-                            self.__report_error(
-                                n_line, f"El campo {fr} de la linea {n_line} no se pudo convertir al tipo {self.__headers_type[index]}")
-                            if self.__ignore_errors:
-                                continue
-                            else:
-                                self.__report_error(
-                                    -1, "Se encontraron errores en el archivo y se ha configurado para que no se ignoren se detuvo la lectura del archivo en la linea {n_line}")
-                                break
-                        format_fields.append(field)
-
-                    print(f"los campos convertido son: {format_fields}")
-
-                    # vinculo cada valor con su cabecera
-                    format_record = dict(
-                        zip(self.__headers.copy(), format_fields.copy()))
-                    print(f"el registro convertido es: {format_record}")
-                    # agrego el registro al data frame
-                    self.__data_frame.append(format_record.copy())
-                    print("*"*80)
-                # print(self.__data_frame)
+                self.__process_tabulated_file()
             else:
-                print("Archivo no tabulado")
+                self.__process_not_tabulated_file()
             self.__raw_file.close()
         else:
             print("Archivo no encontrado")
@@ -150,36 +112,154 @@ class Data:
                 self.__data_separator = special_chars[i]
                 break
 
-    def __proccess_raw_record(self, raw_record: str) -> list[str]:
+    def __process_tabulated_file(self):
+        print("Archivo tabulado")
+        raw_record: str = '<unknown>'
+        raw_fields: list = [str]
+        format_fields: list = [any]
+        format_record: dict = {str: any}
+
+        format_fields.clear()
+        format_record.clear()
+
+        self.__resolve_headers()
+
+        print("="*80)
+        for raw_record in self.__raw_file:
+            raw_record = raw_record.strip()
+            self.__n_line += 1
+            print(f"el raw record es: {raw_record}")
+            raw_fields = self.__process_raw_record(raw_record)
+            print(f"los campos divididos son: {raw_fields}")
+
+            if len(self.__headers) != len(raw_fields):
+                self.__report_error(
+                    self.__n_line, f"El registro de la linea {self.__n_line} no tiene la misma cantidad de campos que la cabecera")
+                if self.__ignore_errors:
+                    continue
+                else:
+                    self.__report_error(
+                        -1, "Se encontraron errores en el archivo y se ha configurado para que no se ignoren se detuvo la lectura del archivo en la linea {self.__n_line}")
+                    break
+
+            format_fields = self.__process_tabulated_fields(raw_fields)
+            # vinculo cada valor con su cabecera
+            format_record = dict(
+                zip(self.__headers.copy(), format_fields.copy()))
+            print(f"el registro convertido es: {format_record}")
+            # agrego el registro al data frame
+            self.__data_frame.append(format_record.copy())
+            print("*"*80)
+
+    def __process_raw_record(self, raw_record: str) -> list[str]:
         raw_fields: list = [str]
         raw_fields.clear()
         raw_record = raw_record.strip()
-        if self.__is_tabulated:
-            if self.__use_long_char:
-                inferior_limit = 0
-                superior_limit = 0
-                for i in range(len(self.__size_field)):
-                    superior_limit = self.__size_field[i]
-                    raw_fields.append(
-                        raw_record[inferior_limit:inferior_limit+superior_limit])
-                    inferior_limit = inferior_limit + superior_limit
-            else:
-                raw_fields = raw_record.split(self.__data_separator)
+        #  divido los valores de los campos por su cantidad de caracteres
+        #  en caso de que los campos vengan dados por cantidad de caracteres
+        if self.__use_long_char:
+            inferior_limit = 0
+            superior_limit = 0
+            for i in range(len(self.__size_field)):
+                superior_limit = self.__size_field[i]
+                raw_fields.append(
+                    raw_record[inferior_limit:inferior_limit+superior_limit])
+                inferior_limit = inferior_limit + superior_limit
         else:
-            pass
+            raw_fields = raw_record.split(self.__data_separator)
         return raw_fields.copy()
+
+    def __process_tabulated_fields(self, raw_fields: list[str]):
+        format_fields: list = [any]
+        format_fields.clear()
+        for index, fr in enumerate(raw_fields):
+            field = fr
+            # realizo la conversion de tipos y lo almaceno format fields
+            if self.__apply_types:
+                field = self.__conversion_type(
+                    fr, self.__headers_type[index])
+            if field is None:
+                self.__report_error(
+                    self.__n_line, f"El campo con el valor {fr} de la linea {self.__n_line} no se pudo convertir al tipo {self.__headers_type[index]}")
+                if self.__ignore_errors:
+                    continue
+                else:
+                    self.__report_error(
+                        -1, "Se encontraron errores en el archivo y se ha configurado para que no se ignoren se detuvo la lectura del archivo en la linea {self.__n_line}")
+                    break
+            format_fields.append(field)
+        print(f"los campos convertido son: {format_fields}")
+        return format_fields.copy()
+
+    def __process_not_tabulated_file(self):
+        print("Archivo no tabulado")
+        raw_record: str = '<unknown>'
+        format_record: dict = {str: any}
+
+        format_record.clear()
+        # caracteres que seran escapados (se le agrega \ antes de ellos) en la planrilla
+        special_chars = ['[', ']', '(', ')', '{', '}']
+        expression = self.__field_template
+        # escapamos los caracteres especiales
+        for char in special_chars:
+            expression = expression.replace(char, '\\'+char)
+        # en las siguientes 3 lineas armamos la expresion regular a partir del plantilla de campos
+        # reemplazamos el primer H (header) por la expresion(\w+)
+        # que signifca cualquier caracter alfanumerico
+        expression = expression.replace('H', '(\w+)', 1)
+        # reemplazamos el primer y unico V (value) por la expresion([\w\s.]+)
+        # que significa cualquier caracter alfanumerico espacio o punto
+        expression = expression.replace('V', '([\w\s.]+)', 1)
+        # si existe mas de un H comunmente usado en etiquetas de cierre como xml se reemplaza por '\1'
+        # que significa que se toma el primer grupo de la expresion regular (por eso el numero 1)
+        # es decir si existe otra etiqueta H su valor debe ser igual al de la primera etiqueta H
+        expression = expression.replace('H', '\\1', 1)
+
+        print(
+            f"la expresion regular con la que se evaluara RAW RECORD es: {expression}")
+        # compilamos la expresion regular para mejoras en el rendimiento
+        pattern = re.compile(expression)
+        print("="*80)
+        for raw_record in self.__raw_file:
+            raw_record = raw_record.strip()
+            self.__n_line += 1
+            print(f"el raw record es: {raw_record}")
+            #  Elimino los caracteres de inicio y fin de raw record que no necesito
+            if self.__clip_start > 0:
+                raw_record = raw_record[self.__clip_start:]
+            if self.__clip_end > 0:
+                raw_record = raw_record[:-self.__clip_end]
+            # Elimino comillas dentro de raw record
+            raw_record = raw_record.replace('"', '')
+            #  Aqui deberia llamar a affect_raw_record
+            #  en matches quedan almacenados en una lista de tuplas con formato:
+            #  [(header, value), (header, value), (header, value), ...]
+            matches = pattern.findall(raw_record)
+            #  convierto la tupla en listas para poder modificarla
+            fields = [list(t) for t in matches]
+            print(f"los fields son: {fields}")
+            for field in fields:
+                #  borro caracteres de espacio en blanco al inicio y al final de cada campo
+                field[1] = field[1].strip()
+                # aplico conversion de tipos
+            print(f"los valores de los fields formateados son: {fields}")
+            #  convierto a diccionario
+            format_records = dict(fields)
+            print(f"el registro convertido es: {format_records}")
+            # agrego el registro al data frame
+            self.__data_frame.append(format_records.copy())
 
     def __report_error(self, line: int, error_message: str):
         self.__data_errors_lines.append(line)
         self.__data_errors_messages.append(error_message)
 
-    def __file_exist(self) -> bool:
-        if self.__full_path.is_file():
+    def __file_exist(self, path: str, error_message: str = "") -> bool:
+        if path.is_file():
             return True
         else:
             # -1 indica que es un error del archivo en general y no en una linea en particular
             self.__report_error(
-                -1, "Archivo no encontrado Verifica la ruta y el nombre del archivo")
+                -1, error_message)
             return False
 
     def __resolve_headers(self):

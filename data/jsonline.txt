@@ -1,0 +1,17 @@
+{"nombre": "Juan", "apellido": "Pérez", "sexo": "M", "altura": 1.75, "soltero": false, "anio_nacimiento": 1990}
+{"nombre": "María", "apellido": "García", "sexo": "F", "altura": 1.63, "soltero": true, "anio_nacimiento": 1985}
+{"nombre": "Pedro", "apellido": "Ramírez", "sexo": "M", "altura": 1.82, "soltero": false, "anio_nacimiento": 1988}
+{"nombre": "Ana", "apellido": "Martínez", "sexo": "F", "altura": 1.68, "soltero": true, "anio_nacimiento": 1995}
+{"nombre": "Luis", "apellido": "Sánchez", "sexo": "M", "altura": 1.78, "soltero": false, "anio_nacimiento": 1993}
+{"nombre": "Marta", "apellido": "Fernández", "sexo": "F", "altura": 1.70, "soltero": true, "anio_nacimiento": 1992}
+{"nombre": "Carlos", "apellido": "López", "sexo": "M", "altura": 1.76, "soltero": false, "anio_nacimiento": 1991}
+{"nombre": "Laura", "apellido": "Díaz", "sexo": "F", "altura": 1.62, "soltero": true, "anio_nacimiento": 1989}
+{"nombre": "Jorge", "apellido": "Gómez", "sexo": "M", "altura": 1.80, "soltero": false, "anio_nacimiento": 1987}
+{"nombre": "Sofía", "apellido": "Hernández", "sexo": "F", "altura": 1.67, "soltero": true, "anio_nacimiento": 1994}
+{"nombre": "Daniel", "apellido": "Álvarez", "sexo": "M", "altura": 1.79, "soltero": false, "anio_nacimiento": 1997}
+{"nombre": "Marina", "apellido": "Moreno", "sexo": "F", "altura": 1.71, "soltero": true, "anio_nacimiento": 1998}
+{"nombre": "Antonio", "apellido": "Castro", "sexo": "M", "altura": 1.81, "soltero": false, "anio_nacimiento": 1996}
+{"nombre": "Isabel", "apellido": "Ortega", "sexo": "F", "altura": 1.65, "soltero": true, "anio_nacimiento": 1999}
+{"nombre": "Pablo", "apellido": "Ruiz", "sexo": "M", "altura": 1.77, "soltero": false, "anio_nacimiento": 1986}
+{"nombre": "Lucía", "apellido": "Vega", "sexo": "F", "altura": 1.69, "soltero": true, "anio_nacimiento": 1990}
+{"nombre": "Diego", "apellido": "Molina", "sexo": "M", "altura": 1.83, "soltero": false, "anio_nacimiento": 1989}
