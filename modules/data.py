@@ -1,4 +1,7 @@
+import sys
+import os
 import re
+import importlib
 from decouple import Config, RepositoryEnv
 from pathlib import Path
 
@@ -27,18 +30,22 @@ class Data:
     __clip_start: int = 0
     __clip_end: int = 0
 
+    __affect_raw_record: bool = False
+    __scripts_path: str = '<unknown>'
+    __scripts_raw_record: list = []
+
     __data_frame: list = [dict]
     __n_line: int = 0
 
     def __init__(self):
         # validar que el archivo de configuracion exista
         config_file = Path(__file__).resolve().parent.parent/'.env.data'
-        print(config_file)
+
         if self.__file_exist(config_file, "Archivo de configuracion data.env no encontrado"):
             # Cargar variables de entorno desde un archivo específico
             config = Config(RepositoryEnv(config_file))
         else:
-            pass
+            return None
         # configuracion de ruta del archivo
         self.__file_name = config('FILE_NAME')
         self.__file_path = Path(__file__).resolve(
@@ -60,7 +67,6 @@ class Data:
         self.__format_data_separator()
 
         self.__headers_type = config('HEADERS_TYPE').split(config('SEPARATOR'))
-        print(f"los tipos de datos de la cabecera son: {self.__headers_type}")
         self.__apply_types = self.__conversion_type(
             config('APPLY_TYPES'), "bool")
         self.__ignore_errors = self.__conversion_type(
@@ -79,6 +85,14 @@ class Data:
         self.__field_template = config('FIELD_TEMPLATE')
         self.__clip_start = int(config('CLIP_START'))
         self.__clip_end = int(config('CLIP_END'))
+
+        #  configuracion de los scripts
+        self.__affect_raw_record = self.__conversion_type(
+            config('AFFECT_RAW_RECORD'), "bool")
+        self.__scripts_raw_record = config(
+            'SCRIPTS').split(config('SEPARATOR'))
+        self.__scripts_path = config('SCRIPTS_PATH')
+
         # configuracion del manejo de errores
         self.__data_errors_messages.clear()
         self.__data_errors_lines.clear()
@@ -129,6 +143,10 @@ class Data:
             raw_record = raw_record.strip()
             self.__n_line += 1
             print(f"el raw record es: {raw_record}")
+            # ejecutos los scripts que afectan al registro
+            if self.__affect_raw_record:
+                raw_record = self.__execute_scripts(raw_record)
+                print(f"el raw record modificado es: {raw_record}")
             raw_fields = self.__process_raw_record(raw_record)
             print(f"los campos divididos son: {raw_fields}")
 
@@ -219,11 +237,11 @@ class Data:
             f"la expresion regular con la que se evaluara RAW RECORD es: {expression}")
         # compilamos la expresion regular para mejoras en el rendimiento
         pattern = re.compile(expression)
-        print("="*80)
         for raw_record in self.__raw_file:
+            print("="*80)
             raw_record = raw_record.strip()
             self.__n_line += 1
-            print(f"el raw record es: {raw_record}")
+            print(f"el raw record es: \'{raw_record}\'")
             #  Elimino los caracteres de inicio y fin de raw record que no necesito
             if self.__clip_start > 0:
                 raw_record = raw_record[self.__clip_start:]
@@ -231,6 +249,8 @@ class Data:
                 raw_record = raw_record[:-self.__clip_end]
             # Elimino comillas dentro de raw record
             raw_record = raw_record.replace('"', '')
+            #  ejecuto los scripts
+            raw_record = self.__execute_scripts(raw_record)
             #  Aqui deberia llamar a affect_raw_record
             #  en matches quedan almacenados en una lista de tuplas con formato:
             #  [(header, value), (header, value), (header, value), ...]
@@ -310,6 +330,27 @@ class Data:
             return None
 
         return None
+
+    def __execute_scripts(self,raw_record: str) -> str:
+        s_path = Path(__file__).resolve().parent.parent/self.__scripts_path
+        dir_path = os.path.abspath(s_path)
+        sys.path.append(dir_path)
+        if self.__affect_raw_record:
+            for name_script in self.__scripts_raw_record:
+                name_script=name_script.strip()
+                full_path_script = s_path/(name_script+".py")
+                if self.__file_exist(full_path_script, f"El script {name_script} no fue encontrado en la ruta indicada"):
+                    print(
+                        f"* El script [{name_script}] afectara a la linea de archivo recien leida")
+                    scripts = self.__get_script_from_module(name_script)
+                    for script in scripts:
+                        raw_record = script(raw_record)
+        return raw_record
+
+    def __get_script_from_module(self,module_name : str) -> list[any]:
+        module = importlib.import_module(module_name)
+        functions = [getattr(module, f) for f in dir(module) if callable(getattr(module, f))]
+        return functions
 
     '''
     get functions

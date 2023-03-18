@@ -4,7 +4,7 @@ from modules.data import Data
 if __name__ == '__main__':
     source_data = Data()
     source_data.load_file()
-    source_data.show_errors()
+    # source_data.show_errors()
     # print(f"el nombre del archivo es: {source_data.get_file_name()}")
     # print(f"la ruta del archivo es: {source_data.get_file_path()}")
     # print(f"la extension del archivo es: {source_data.get_extension_file()}")
