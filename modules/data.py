@@ -7,10 +7,10 @@ from pathlib import Path
 
 
 class Data:
-    __file_name: str = '<unknown>'
-    __file_path: str = '<unknown>'
-    __full_path: str = '<unknown>'
-    __file_encoding: str = '<unknown>'
+    __file_name: str = ''
+    __file_path: str = ''
+    __full_path: str = ''
+    __file_encoding: str = ''
     __raw_file = None
 
     __is_tabulated: bool = False
@@ -27,12 +27,12 @@ class Data:
     __data_errors_lines: list = [int]
     __data_errors_messages: list = [int]
 
-    __field_template: str = '<unknown>'
+    __field_template: str = ''
     __clip_start: int = 0
     __clip_end: int = 0
 
     __affect_raw_record: bool = False
-    __scripts_path: str = '<unknown>'
+    __scripts_path: str = ''
     __scripts_raw_record: list = []
 
     __data_frame: list = [dict]
@@ -98,7 +98,8 @@ class Data:
         self.__data_errors_messages.clear()
         self.__data_errors_lines.clear()
 
-    def load_file(self):
+    def process_file(self):
+        self.__data_frame.clear()
         if self.__file_exist(self.__full_path, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
             print("Archivo encontrado")
             self.__raw_file = open(self.__full_path, 'r', encoding=self.__file_encoding)
@@ -129,7 +130,7 @@ class Data:
 
     def __process_tabulated_file(self):
         print("Archivo tabulado")
-        raw_record: str = '<unknown>'
+        raw_record: str = ''
         raw_fields: list = [str]
         format_fields: list = [any]
         format_record: dict = {str: any}
@@ -212,7 +213,7 @@ class Data:
 
     def __process_not_tabulated_file(self):
         print("Archivo no tabulado")
-        raw_record: str = '<unknown>'
+        raw_record: str = ''
         format_record: dict = {str: any}
 
         format_record.clear()
@@ -356,6 +357,8 @@ class Data:
     '''
     get functions
     '''
+    def get_data(self) -> list:
+        return self.__data_frame.copy()
 
     def get_file_name(self) -> str:
         return self.__file_name
