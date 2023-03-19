@@ -10,6 +10,7 @@ class Data:
     __file_name: str = '<unknown>'
     __file_path: str = '<unknown>'
     __full_path: str = '<unknown>'
+    __file_encoding: str = '<unknown>'
     __raw_file = None
 
     __is_tabulated: bool = False
@@ -51,8 +52,8 @@ class Data:
         self.__file_path = Path(__file__).resolve(
         ).parent.parent/config('FILE_PATH')
         self.__full_path = self.__file_path/self.__file_name
-
         # configuracion de los datos del archivo
+        self.__file_encoding = config('FILE_ENCODING')
         self.__is_tabulated = self.__conversion_type(
             config('FILE_TABULATED'), "bool")
 
@@ -100,7 +101,7 @@ class Data:
     def load_file(self):
         if self.__file_exist(self.__full_path, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
             print("Archivo encontrado")
-            self.__raw_file = open(self.__full_path, 'r', encoding='utf-8')
+            self.__raw_file = open(self.__full_path, 'r', encoding=self.__file_encoding)
             # si el archivo tiene cabecera le sumo a self.__n_line
             if self.__headers_in_first_line:
                 self.__n_line = 1
