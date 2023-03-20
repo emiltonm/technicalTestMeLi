@@ -25,7 +25,6 @@ class API:
         else:
             return None
 
-        print(f"El diccionario de datos es: {self.__dict_data}")
         self.__url_base = config('URL_BASE')
         #  valido que url base termine con / sino lo agrego
         if self.__url_base[-1] != "/":

@@ -1,3 +1,6 @@
+#
+
+
 cambiar el nombre del .env.data.example a .env.data
 cambiar el nombre del .env.api.example a .env.api
 # configuracion de docker
