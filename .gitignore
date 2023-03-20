@@ -1,3 +1,5 @@
 .env.data
 .env.api
+.env.database
+.env.server
 test.py
