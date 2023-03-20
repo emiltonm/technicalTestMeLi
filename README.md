@@ -1,6 +1,7 @@
 # Desafío Técnico Mercado Libre
 ## Descripción del desafío
-La prueba esta dividida en dos partes una Técnica y otra Teórica
+La prueba esta dividida en dos partes una Técnica y otra Teórica:
+
 **Parte técnica.** consiste en ejecutar un servicio web dentro de un docker container, el servicio debe:
 - Leer un archivo en formato streameable (csv,txt,jsonlines)
 - Con los datos obtenidos de el archivo consultar el API publica de mercado libre
