@@ -16,7 +16,7 @@ class API:
     __data_errors_lines: list = []
     __data_errors_messages: list = []
 
-    def __init__(self, dict_data: dict):
+    def __init__(self):
         # validar que el archivo de configuracion exista
         config_file = Path(__file__).resolve().parent.parent/'.env.api'
         if self.__file_exist(config_file, "Archivo de configuracion data.env no encontrado"):
@@ -25,7 +25,6 @@ class API:
         else:
             return None
 
-        self.__dict_data = dict_data.copy()
         print(f"El diccionario de datos es: {self.__dict_data}")
         self.__url_base = config('URL_BASE')
         #  valido que url base termine con / sino lo agrego
@@ -36,12 +35,12 @@ class API:
         self.__file_name = config('FILE_API')
         self.__full_path = self.__path/self.__file_name
 
-        # cargo el archivo de las plantillas url
-        self.__load_url_file()
-
         # configuracion del manejo de errores
         self.__data_errors_messages.clear()
         self.__data_errors_lines.clear()
+
+    def set_api_data(self, dict_d: dict):
+        self.__dict_data = dict_d.copy()
 
     def __file_exist(self, path: str, error_message: str = "") -> bool:
         if path.is_file():
@@ -60,7 +59,7 @@ class API:
         for index, error in enumerate(self.__data_errors_messages):
             print(f"Error Linea {self.__data_errors_lines[index]}: {error}")
 
-    def __load_url_file(self):
+    def fetch_url_file(self):
         process_url: str = ""
         key_list: list = []
         self.__api_data.clear()
@@ -124,9 +123,9 @@ class API:
                 template = self.__url_base + \
                     template.replace(f"<{tag}>", str(data[tag]))
         return template
-    
+
     # getters
     def get_data(self):
         return self.__dict_data
-    
+
     # setters
