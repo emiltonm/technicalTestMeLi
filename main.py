@@ -1,4 +1,6 @@
 from flask import Flask, jsonify
+from decouple import Config, RepositoryEnv
+from pathlib import Path
 
 from modules.data import Data
 from modules.api import API
@@ -8,6 +10,7 @@ app = Flask(__name__)
 source_data = Data()
 api_meli = API()
 database = Database()
+
 
 @app.route('/', methods=['GET'])
 def index():
@@ -33,4 +36,17 @@ def process():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    config_file = Path(__file__).resolve().parent/'.env.server'
+    print(config_file)
+    if config_file.is_file():
+        config = Config(RepositoryEnv(config_file))
+        debug_mode = config('SERVER_DEBUG')
+        if debug_mode.upper() == 'TRUE':
+            debug_mode = True
+        else:
+            debug_mode = False
+        app.run(host=config('SERVER_HOST'),
+                port=config('SERVER_PORT'), debug=debug_mode)
+    else:
+        print("Archivo de configuracion no encontrado")
+        exit()

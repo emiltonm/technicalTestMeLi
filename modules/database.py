@@ -21,8 +21,10 @@ class Database:
             config = Config(RepositoryEnv(config_file))
         else:
             return None
-        # configuracion de ruta del archivo
-        self.__mongo_uri = config('MONGO_URI')
+
+        #self.__mongo_uri = config('MONGO_URI')+config('MONGO_USER')+":"+config('MONGO_PASSWORD')+"@"+config('MONGO_HOST')+":"+config('MONGO_PORT')+"/?authMechanism=DEFAULT"
+        #mongodb://localhost:27017/
+        self.__mongo_uri = config('MONGO_URI')+config('MONGO_HOST')+":"+config('MONGO_PORT')+"/"
         self.__mongo_client = MongoClient(self.__mongo_uri)
         self.__mongo_db = self.__mongo_client[config('MONGO_DB')]
         self.__mongo_collection = self.__mongo_db[config('MONGO_COLLECTION')]

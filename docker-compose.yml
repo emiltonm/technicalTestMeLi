@@ -1,16 +1,20 @@
 # version de docker-compose
 version: "3.9"
 services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
   mongo:
-    # Utiliza la imagen oficial de mongo ultima version
     image: mongo
     restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
     ports: 
-    # Mapea el puerto 27017 del contenedor al puerto 27018 del host
-      - "27018:27017"
+      - "27017:27017"
     volumes:
     # Mapea el volumen de datos del contenedor al directorio /data/db del host
       - ./data/db:/data/db
