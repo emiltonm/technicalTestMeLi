@@ -197,7 +197,6 @@ descripcion de metodos relevantes.
 **get_extension_file() -> str**: devuelve la extension del archivo de datos
 
 
-
 # Descripción de modulo api
 Descripcion de la clase
 ### Propiedades
