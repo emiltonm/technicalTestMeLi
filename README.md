@@ -118,10 +118,63 @@ Secuencia de ejecución:
 
 ### Propiedades de la clase Data
 
-(-GS) _< string >_ **file_path**: ruta relativa donde se encuentra el archivo de datos a partir de app.py
+(-GS) _< string >_ **file_name**: nombre del archivo de datos a procesar
+
+(-GS) _< string >_ **file_path**: ruta relativa donde se encuentra el archivo de datos
+
+(-GS) _< string >_ **full_path**: ruta completa del archivo de datos
+
+(---) _< string >_ **file_encoding**: formato de codificacion del archivo
+
+(---) _< File >_ **raw_file**:cursor del archivo de datos
+
+(-GS) _< bool >_ **is_tabulated**:True si el archivo es tabulado
+
+(-GS) _< bool >_ **headers_in_first_line**: True si la primera linea del archivo son los nombres de las columnas/clave en este caso el metodo set se de esta propiedad se llama _set_headers_in_data_
+
+(-GS) _< bool >_ **use_custom_header**: True si se desea utilizar nombres de columnas/claves personalizados
+
+(-GS) _< list[str] >_ **custom_header**: lista de nombres personalizados para las columnas/claves
+
+(-GS) _< string >_ **data_separator**: caracter que sirve como separador del valor de cada uno de los campos
+
+(---) _< bool >_ **ignore_errors**: True para ignorar el registro actual si tiene alguna inconsistencia y continuar con el siguiente False para detener la ejecucion del proceso (ignora todo el registro no solamente el campo inconsistente)
+
+(---) _< bool >_ **apply_types**: por defecto todos los campos son leidos como tipo string, si se desea que se apliquen tipos de datos personalizados se debe colocar en True esta propiedad
+
+(---) _< bool >_ **use_long_char**: True si los campos vienen separados por su cantidad de caracteres
+
+(---) _< list[int] >_ **size_field**: lista de cantidad de caracteres que corresponden a cada campo
+
+(---) _< bool >_ **affect_raw_record**: habilita la ejecucion de scripts que modifica al registro cuando aun es una linea de texto
+
+(---) _< string >_ **scripts_path**: ruta relativa desde el directorio del proyecto en la cual se encuentran los scripts que se ejecutaran en cada registro
+
+(---) _< list[str] >_ **scripts**: lista de scripts separados por SEPARATOR que se ejecutaran en cada registro, todos los scripts deben recibir un unico argumento de tipo string y retornar un string
+
+(---) _< list[str] >_ **headers_type**: lista de los tipos de datos de cada columna/clave, se tiene encuenta el orden y que el archivo sea tabulado. los tipos de datos validos son int,str,float,bool. para futuras versiones se podria agregar mas tipos de datos como el date
+
+(---) _< string >_ **field_template**: cadena que contiene el formato en que vienen almacenados los campos en cada registro de un archivo no tabulado el formarto es H (header,key) V (value)
+
+(---) _< int >_ **clip_start**: numero de caracteres a ignorar desde el inicio de cada registro
+
+(---) _< int >_ **clip_end**: numero de caracteres a ignorar desde el final de cada registro
+
+(---) _< list[str] >_ **headers**: lista de nombres de columnas/claves
+
+(-G-) _< list[dict] >_ **data_frame**: datos extraidos del archivo de datos, el metodo get de esta propiedad es llamado _get_data_
+
+(---) _< list[int] >_ **data_errors_lines**: lista de numeros de lineas que contienen errores
+
+(---) _< list[str] >_ **data_errors_messages**: lista de mensajes de error
+
+NOTA: algunas propiedades deberian tener metodos get y set establecidos pero por cuestiones de tiempo no fueron implementadas (pero deberian)
 
 ###  Metodos
 descripcion de metodos relevantes
+
+get_data()
+get_extension_file()
 
 # Descripción de modulo api
 Descripcion de la clase
@@ -136,3 +189,4 @@ Descripcion de la clase
 descripcion de las propiedades importantes
 ###  Metodos
 descripcion de metodos relevantes
+
