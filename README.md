@@ -198,9 +198,73 @@ descripcion de metodos relevantes.
 
 
 # Descripción de modulo api
-Descripcion de la clase
-### Propiedades
-descripcion de las propiedades importantes
+Nota: _configurar el modulo data a traves del archivo .env.api_
+
+Este modulo se encarga tomar la lista de registros generados por el modulo Data y a partir de estos generar las url que consultaran el API el resultado de esas consultas (lista de diccionarios) sera obtenido a traves del metodo get_data
+
+Flujo de ejecución:
+- apertura y lectura de archivo de configuracion
+  - en caso de no ser posible finaliza la ejecucion del proceso 
+- inicializacion de variables
+- paso de registros generados por el modulo Data (metodo set_api_data(registros))
+- procesar el archivo donde se encuentran las instrucciones de consulta(fetch_url_file())
+  - en caso de no encontrar el archivo de instrucciones a procesar termina el proceso
+  - formatea las instrucciones convirtiendola en url de consulta a la API
+  - ejecuta la peticion a la API con la url generada
+  - agrega el resultado como una {clave:valor} mas al registro usado para consultar el API
+    - en caso de fallar la consulta (error 404) agrega un resultado {"processing_error":True} para no seguir usando ese registro en las siguientes consultas a las API
+- agregar el registro resultante de la peticion a la lista de registros de la api
+- cierre de archivo de instrucciones
+
+Detalle de ejecución:
+- **carga archivo de configuracion**: carga el archivo de configuracion .env.api en caso de no encontrarse detiene la ejecución del proceso, este archivo esta ubicado en la raiz del proyecto y contiene las propiedades necesarias para la ejecución del modulo api estas propiedades son:
+  - **PATH_TO_APIS**:(string) ruta relativa donde se encuentra el archivo de datos a partir de app.py
+  - **URL_BASE**:(string) direccion url mediante el cual se accede al API ejemplo https://api.mercadolibre.com/
+  - **FILE_API**: (string) nombre de el archivo donde se encuentran las instrucciones para generar las urls de consultas a las APIs, cada instruccion debe estar en una linea diferente el formato de instruccion es el siguiente:
+  
+    **texto_1<clave_1>texto_n<clave_n>->name_prop_1,name_prop_n**
+
+    donde texto_1 y texto_n son strings "estaticos" que ayudan a construir la url
+    
+    **<clave_1>** y **<clave_n>** son nombres validos de las claves del diccionario de consulta encerrados entre llaves angulares, puesto que las consultas se hacen en forma secuencial y los resultados se guardan en el mismo diccionario se pueden usar claves generadas de consultas anteriores
+
+    **name_prop_1** y **name_prop_n** son los nombres de las propiedades obtenidas de la consulta que quiero almacenar, estas propiedades deben ir despues de la secuencia de caracteres -> y separadas por comas sin espacios
+
+    ejemplo:
+    tomando como referencia el API publica de mercado libre, para obtener el nombre de la categoria de un producto la instruccion seria:
+
+    categories/<category_id>->name
+
+    - donde _categories/_ es un texto_n "estatico" que ayuda a formar la url
+  
+    - _<category_id>_ es una clave valida del diccionario donde estan guardados los datos que se quieren consultar en el api o es una clave valida generada por alguna peticion a la API ejecutada anteriormente
+  
+    - _->_ es el indicador de que el texto siguiente es la lista de propiedades que quiero extraer de la consulta a la API
+  
+    - _name_ es el nombre de la propiedad que quiero extraer puedoagregar mas propiedades separandolas por , sin espacios despues de esta
+
+    otro ejemplo valido de instruccion utilizando el API de mercado libre seria:
+    
+    items?ids=<Key>&attributes=price,start_time,category_id,currency_id,seller_id->price,start_time,category_id,currency_id,seller_id
+
+    donde _items?ids=_ es texto complementario
+    
+    _<Key>_ es la clave del producto
+
+    _&attributes=price,start_time,category_id,currency_id,seller_id_ mas texto complementario
+
+    _->_ indicador de que el texto que sigue son las propiedades que quiero almacenar
+    
+    _price,start_time,category_id,currency_id,seller_id_ lista de propiedades a almacenar separadas por ,
+
+    no hay limite para agregar claves ni para agregar propiedades siempre que sean validas
+
+
+
+### Propiedades de la clase API
+(-GS) _< string >_ **file_name**: nombre de el archivo de datos a procesar
+
+
 ###  Metodos
 descripcion de metodos relevantes
 
@@ -211,4 +275,4 @@ descripcion de las propiedades importantes
 ###  Metodos
 descripcion de metodos relevantes
 
-# Futuras mejoras
+# Futuras implementaciones
