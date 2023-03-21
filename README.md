@@ -54,23 +54,37 @@ en el primero de los ejemplos indica que la propiedad es privada y tiene un meto
 
 
 # Detalle de modulo Data
-_configurar el modulo data a traves del archivo .env.data_
-
+Nota: _configurar el modulo data a traves del archivo .env.data_
 Se encarga de leer el archivo base y de generar un diccionario de datos para la consulta a la api.
 
-**False** se asume que en cada registro el orden de los datos (los fields) no es correspondiente al de las columnas y que no todas las columnas deben tener todos los datos. ejemplo de un registro no tabulado dentro del mismo archivo podria tener la siguiente estructura:
-```  
-{"nombre":"Emilton","apellido":"Mendoza ojeda", "sexo":"M"}
+Flujo de ejecución:
+- apertura y lectura de archivo de configuracion
+  - en caso de no ser posible finaliza la ejecucion del proceso 
+- inicializacion de variables
+- apertura de archivo de datos
+  - en caso de no ser posible finaliza la ejecucion del proceso
+- definir si el archivo es tabulado (formato CSV y parecidos) o no (formato JSONLINES y parecidos)
+    - tabulado:
+      - se resuelven las cabeceras (nombres de las columnas, claves del diccionario)
+      - lectura de registro como cadena de texto
+      - aplicar scripts sobre el registro (si esta activado)
+      - convierto el registro en una lista de strings
+      - comprobar si el numero de strings del registro es igual al numero de cabeceras
+        - en caso de ser diferente se reporta el error, se ignora el registro y se continua con el siguiente
+      - aplicar la conversion de tipos de datos a los valores (si esta activado)
+      - convertir el registro en un diccionario juntando las cabeceras con los valores
+      - agrego el registro a la lista data (lista de diccionarios procesados)
+    - no tabulado:
+      - convertir la plantilla HV en una expresion regular
+      - lectura de registro como cadena de texto
+      - recortar caracteres de inicio y fin del registro (indicado en el archivo de configuracion)
+      - eliminar las comillas dobles del registro (facilita la extraccion de los valores)
+      - aplicar scripts sobre el registro (si esta activado)
+      - aplicar la expresion regular sobre el registro y convertir el resultado en una diccionario
+      - agregar el registro a la lista data (lista de diccionarios procesados)
+- cierra el archivo de datos
 
-y esta otra...
-
-{"apellido":"Garcia Marquez","nombre":"Gabriel"} 
-```
-si es **False** no se tendran en cuenta las siguientes propiedades del archivo de configuracion... (listar propiedades) 
-
-habilita la ejecucion de scripts que modifica al registro cuando aun es una linea de texto, esto permite un amplio rango de posibilidades para la manipulacion de los datos. por ejemplo se puede utilizar para eliminar caracteres especiales, ejemplo las llaves de inicio y de cierre {} de los jsonlines; modificar valores de campos, (ejemplo pasara de formato largo del sexo a corto MASCULINO -> M), etc.
-
-Secuencia de ejecución:
+Detalle de ejecución:
 - **carga archivo de configuracion**: carga el archivo de configuracion .env.data en caso de no encontrarse detiene la ejecución del proceso, este archivo esta ubicado en la raiz del proyecto y contiene las propiedades necesarias para la ejecución del modulo data estas propiedades son:
   - **SEPARATOR**: _(character)_ caracter separador para las listas DENTRO de este mismo documento (.env.data) no confundir con DATA_SEPARATOR
   - **FILE_PATH**: _(string)_ ruta relativa donde se encuentra el archivo de datos a partir de app.py
@@ -110,11 +124,11 @@ Secuencia de ejecución:
     H=V separa los campos de registros con el siguiente formato:
 
     nombre=Emilton,apellido=Mendoza ojeda,sexo=M
-    ```
-     
+    ```     
   - **CLIP_START**:  _(int)_ numero de caracteres a ignorar desde el inicio de cada registro
   - **CLIP_END**: _(int)_ numero de caracteres a ignorar desde el final de cada registro
 
+- **aplicar scripts sobre el registro**: Ejecuta los ficheros.py que se encuentran en la lista **SCRIPTS** del archivo de configuracion enviando el registro actual (en este punto es un string) como unico argumento. Los scripts deben estar en el directorio indicado en la propiedad **SCRIPTS_PATH** del archivo de configuracion, deben tener una unica funcion que recibe un string y retornar un string, el nombre del fichero del script debe ser igual al de esta funcion, los scripts son ejecutados de forma secuencial en el orden en que se encuentran en la lista **SCRIPTS** del archivo de configuracion, esto quiere decir que las modificaciones que realice un script sobre el registro actual se tendran en cuenta para el siguiente script.
 
 ### Propiedades de la clase Data
 
@@ -190,3 +204,4 @@ descripcion de las propiedades importantes
 ###  Metodos
 descripcion de metodos relevantes
 
+# Futuras mejoras
