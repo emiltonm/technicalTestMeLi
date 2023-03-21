@@ -186,10 +186,17 @@ Detalle de ejecución:
 NOTA: algunas propiedades deberian tener metodos get y set establecidos pero por cuestiones de tiempo no fueron implementadas (pero deberian)
 
 ###  Metodos
-descripcion de metodos relevantes
+descripcion de metodos relevantes.
 
-get_data()
-get_extension_file()
+**process_file()**: inicia el proceso de obtencion de datos, los cuales se pueden obtener a traves de get_data()
+
+**get_data() -> list[dict]**: retorna una lista de diccionarios con los datos extraidos del archivo de datos
+
+**show_errors()**: muestra en pantalla los errores que se generaron durante la carga de los datos
+
+**get_extension_file() -> str**: devuelve la extension del archivo de datos
+
+
 
 # Descripción de modulo api
 Descripcion de la clase
