@@ -39,15 +39,16 @@ class Data:
     __n_line: int = 0
 
     def __init__(self):
-        # validar que el archivo de configuracion exista
+        # valida que el archivo de configuracion exista
         config_file = Path(__file__).resolve().parent.parent/'.env.data'
 
-        if self.__file_exist(config_file, "Archivo de configuracion data.env no encontrado"):
-            # Cargar variables de entorno desde un archivo específico
-            config = Config(RepositoryEnv(config_file))
-        else:
+        if not self.__file_exist(config_file, "Archivo de configuracion .env.data no encontrado"):
             return None
-        # configuracion de ruta del archivo
+        else:
+            print("Estableciendo variables de entorno desde .env.data ")
+            config = Config(RepositoryEnv(config_file))
+
+        # configuracion de ruta del archivo de datos
         self.__file_name = config('FILE_NAME')
         self.__file_path = Path(__file__).resolve(
         ).parent.parent/config('FILE_PATH')
@@ -99,34 +100,26 @@ class Data:
         self.__data_errors_lines.clear()
 
     def process_file(self):
+        '''
+        Procesa el archivo de datos, el resultado de este proceso
+        se puede obtener llamando al metodo get_data() -> list[dict]
+        '''
         self.__data_frame.clear()
-        if self.__file_exist(self.__full_path, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
-            print("Archivo encontrado")
-            self.__raw_file = open(self.__full_path, 'r', encoding=self.__file_encoding)
+        if not self.__file_exist(self.__full_path, "Archivo de datos no encontrado verifica la ruta y el nombre del archivo"):
+            self.__raw_file = None
+        else:
+            print("Procesando archivo de datos...")
+            self.__raw_file = open(self.__full_path, 'r',
+                                   encoding=self.__file_encoding)
             # si el archivo tiene cabecera le sumo a self.__n_line
             if self.__headers_in_first_line:
-                self.__n_line = 1
+                self.__n_line += 1
 
             if self.__is_tabulated:
                 self.__process_tabulated_file()
             else:
                 self.__process_not_tabulated_file()
             self.__raw_file.close()
-        else:
-            print("Archivo no encontrado")
-            self.__raw_file = None
-
-    def show_errors(self):
-        for index, error in enumerate(self.__data_errors_messages):
-            print(f"Error Linea {self.__data_errors_lines[index]}: {error}")
-
-    def __format_data_separator(self):
-        key_words = ['tab', 'space']
-        special_chars = ['\t', ' ']
-        for i, word in enumerate(key_words):
-            if self.__data_separator.lower() == word:
-                self.__data_separator = special_chars[i]
-                break
 
     def __process_tabulated_file(self):
         print("Archivo tabulado")
@@ -144,11 +137,12 @@ class Data:
         for raw_record in self.__raw_file:
             raw_record = raw_record.strip()
             self.__n_line += 1
-            print(f"el raw record es: {raw_record}")
+            print(f"raw_record es: {raw_record}")
             # ejecutos los scripts que afectan al registro
+            # cuando aun es una linea de texto
             if self.__affect_raw_record:
                 raw_record = self.__execute_scripts(raw_record)
-                print(f"el raw record modificado es: {raw_record}")
+                print(f"raw_record resultante : {raw_record}")
             raw_fields = self.__process_raw_record(raw_record)
             print(f"los campos divididos son: {raw_fields}")
 
@@ -271,18 +265,32 @@ class Data:
             # agrego el registro al data frame
             self.__data_frame.append(format_records.copy())
 
-    def __report_error(self, line: int, error_message: str):
-        self.__data_errors_lines.append(line)
-        self.__data_errors_messages.append(error_message)
+    def show_errors(self):
+        for index, error in enumerate(self.__data_errors_messages):
+            print(f"Error Linea {self.__data_errors_lines[index]}: {error}")
 
-    def __file_exist(self, path: str, error_message: str = "") -> bool:
+    def __format_data_separator(self):
+        key_words = ['tab', 'space']
+        special_chars = ['\t', ' ']
+        for i, word in enumerate(key_words):
+            if self.__data_separator.lower() == word:
+                self.__data_separator = special_chars[i]
+                break
+
+    def __file_exist(self, path: str, error_message: str = "", print_in_screen: bool = True) -> bool:
         if path.is_file():
             return True
         else:
+            if print_in_screen:
+                print(error_message)
             # -1 indica que es un error del archivo en general y no en una linea en particular
             self.__report_error(
                 -1, error_message)
             return False
+
+    def __report_error(self, line: int, error_message: str):
+        self.__data_errors_lines.append(line)
+        self.__data_errors_messages.append(error_message)
 
     def __resolve_headers(self):
         if self.__headers_in_first_line:
@@ -333,31 +341,49 @@ class Data:
 
         return None
 
-    def __execute_scripts(self,raw_record: str) -> str:
+    def __execute_scripts(self, raw_record: str) -> str:
+        #  obtengo la ruta del archivo de scripts al path del sistema para que puedan ser importados
         s_path = Path(__file__).resolve().parent.parent/self.__scripts_path
         dir_path = os.path.abspath(s_path)
         sys.path.append(dir_path)
+
         if self.__affect_raw_record:
+            # recorro la lista de scripts y les paso el raw record
+            # para que puedan modificarlo
             for name_script in self.__scripts_raw_record:
-                name_script=name_script.strip()
+                name_script = name_script.strip()
                 full_path_script = s_path/(name_script+".py")
-                if self.__file_exist(full_path_script, f"El script {name_script} no fue encontrado en la ruta indicada"):
+                if not self.__file_exist(full_path_script, f"El script {name_script} no fue encontrado en la ruta indicada"):
+                    continue
+                else:
                     print(
-                        f"* El script [{name_script}] afectara a la linea de archivo recien leida")
+                        f"* El script [{name_script}] modificara la linea de archivo actual")
                     scripts = self.__get_script_from_module(name_script)
                     for script in scripts:
                         raw_record = script(raw_record)
         return raw_record
 
-    def __get_script_from_module(self,module_name : str) -> list[any]:
+    def __get_script_from_module(self, module_name: str) -> list[any]:
+        #  carga el modulo (archivo.py)
+        #  no tiene problemas con la ruta puesto que se agrego al path del sistema
+        #  asi que solo basta con su nombre
         module = importlib.import_module(module_name)
-        functions = [getattr(module, f) for f in dir(module) if callable(getattr(module, f))]
+        #  recorre todos los objetos que hay dentro del modulo (archivo.py)
+        #  estos objetos pueden ser funciones, clases, variables, etc.
+        #  si el objeto en callable (es decir una funcion) lo agrega a la lista
+        #  de funtions
+        functions = [getattr(module, f) for f in dir(
+            module) if callable(getattr(module, f))]
         return functions
 
     '''
     get functions
     '''
+
     def get_data(self) -> list:
+        '''
+        retorna una copia de los datos cargados del archivo de datos en formato diccionario
+        '''
         return self.__data_frame.copy()
 
     def get_file_name(self) -> str:

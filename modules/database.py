@@ -1,6 +1,7 @@
+import pymongo
 from decouple import Config, RepositoryEnv
 from pathlib import Path
-import pymongo
+from pymongo.errors import ServerSelectionTimeoutError, OperationFailure
 
 
 class Database:
@@ -8,14 +9,14 @@ class Database:
     __mongo_client: None
     __mongo_db: str
     __mongo_collection: str
-    __id_field: str
     __data_errors_lines: list = [int]
     __data_errors_messages: list = [int]
+    __id_field: str
 
     def __init__(self):
         # verificamos que el archivo de configuracion existe
         config_file = Path(__file__).resolve().parent.parent/'.env.database'
-        
+
         if not self.__file_exist(config_file, "Archivo de configuracion .env.database no encontrado"):
             return None
         else:
@@ -23,11 +24,13 @@ class Database:
             config = Config(RepositoryEnv(config_file))
 
         # establecemos la conexion con la base de datos
-        self.__mongo_uri = "mongodb://"+config('MONGO_HOST')+":"+config('MONGO_PORT')+"/"+config('MONGO_DB')
-        print(":"*800)
+        self.__mongo_uri = f"mongodb://{config('MONGO_HOST')}:{config('MONGO_PORT')}"
+        print("-"*80)
         print(self.__mongo_uri)
+        print("-"*80)
         try:
-            self.__mongo_client = pymongo.MongoClient(self.__mongo_uri, serverSelectionTimeoutMS=config('MONGO_TIMEOUT'))
+            self.__mongo_client = pymongo.MongoClient(
+                self.__mongo_uri, serverSelectionTimeoutMS=int(config('MONGO_TIMEOUT')))
             self.__mongo_client.server_info()
             print("Conectado a MongoDB")
         except pymongo.errors.ServerSelectionTimeoutError as timeError:
@@ -38,8 +41,11 @@ class Database:
             return None
         self.__mongo_db = self.__mongo_client[config('MONGO_DB')]
         self.__mongo_collection = self.__mongo_db[config('MONGO_COLLECTION')]
-        self.__id_field = config('MONGO_ID_FIELD')
-        self.__mongo_collection.insert_one({"name": "test"})
+
+        # self.__id_field = config('MONGO_ID_FIELD')
+
+        # linea para probar la conexion a la base de datos
+        # self.__mongo_collection.insert_one({"name": "test"})
 
     def insert_one(self, document: dict):
         self.__mongo_collection.insert_one(document)
