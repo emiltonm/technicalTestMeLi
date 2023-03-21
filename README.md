@@ -55,7 +55,8 @@ en el primero de los ejemplos indica que la propiedad es privada y tiene un meto
 
 # Detalle de modulo Data
 Nota: _configurar el modulo data a traves del archivo .env.data_
-Se encarga de leer el archivo base y de generar un diccionario de datos para la consulta a la api.
+
+Este modulo se encarga de leer el archivo base y de generar un diccionario de datos para la consulta a la api.
 
 Flujo de ejecución:
 - apertura y lectura de archivo de configuracion
@@ -75,7 +76,7 @@ Flujo de ejecución:
       - convertir el registro en un diccionario juntando las cabeceras con los valores
       - agrego el registro a la lista data (lista de diccionarios procesados)
     - no tabulado:
-      - convertir la plantilla HV en una expresion regular
+      - convertir la plantilla HV (explicado en la carga del archivo de configuracion) en una expresion regular
       - lectura de registro como cadena de texto
       - recortar caracteres de inicio y fin del registro (indicado en el archivo de configuracion)
       - eliminar las comillas dobles del registro (facilita la extraccion de los valores)
@@ -90,9 +91,9 @@ Detalle de ejecución:
   - **FILE_PATH**: _(string)_ ruta relativa donde se encuentra el archivo de datos a partir de app.py
   - **FILE_NAME**: _(string)_ nombre del archivo de datos a procesar
   - **FILE_ENCODING**: _(string)_ tipo de codificacion del archivo de datos
-  - **DATA_SEPARATOR**: _(character or tag)_ caracter que sirve como separador del valor de cada uno de los campos, utilizar la palabra TAB,SPACE para indicar que el separador es un tabulador o espacio en blanco respectivamente
-  - **FILE_TABULATED**:_(boolean)_ **True** si el archivo conserva el mismo orden de datos en cada registro ejemplo un CSV y el numero de datos por registro coincide con el numero de columnas 
-  - **AFFECT_RAW_RECORD**:_(boolean)_ habilita la ejecucion de scripts que modifica al registro cuando aun es una linea de texto
+  - **DATA_SEPARATOR**: _(character or tag)_ caracter que sirve como separador del valor de cada uno de los campos, utilizar las palabras TAB, SPACE para indicar que el separador es un tabulador o espacio en blanco respectivamente
+  - **FILE_TABULATED**: _(boolean)_ **True** si el archivo conserva el mismo orden de datos en cada registro ejemplo un CSV y el numero de datos por registro coincide con el numero de columnas 
+  - **AFFECT_RAW_RECORD**: _(boolean)_ habilita la ejecucion de scripts que modifica al registro cuando aun es una linea de texto
   - **SCRIPTS_PATH**: _(string)_ ruta relativa desde el directorio del proyecto en la cual se encuentran los scripts que se ejecutaran en cada registro
   - **SCRIPTS**: _(string,string,...)_ lista de scripts separados por SEPARATOR que se ejecutaran en cada registro, todos los scripts deben recibir un unico argumento de tipo string y retornar un string
   - **HEADERS_IN_FIRST_LINE**:_(boolean)_ **True** si el archivo contiene en su primera linea los nombres de los campos/claves del diccionario que se generara
@@ -102,12 +103,12 @@ Detalle de ejecución:
   - **HEADERS_TYPE**: _(tag,tag,...)_ lista de tipos de datos separados por SEPARATOR, se tiene encuenta el orden y que el archivo sea tabulado. los tipos de datos validos son int,str,float,bool. para futuras versiones se podria agregar mas tipos de datos como el date
   - **USE_LONG_CHAR_SEPARATOR**: _(boolean)_ **True** si los campos vienen separados por su cantidad de caracteres, ejemplo:
     ```
-    emilton1983col1
-    eduardo1986arg1
-    carlos 1000ecu0
-    ana    2000ven0
+    emilton1983colM
+    eduardo1986argM
+    carlos 1000ecuM
+    ana    2000venF
     ```
-    
+    en el ejemplo anterior cada registros tiene 4 campos, el primer campo (nombre) tiene reservado siempre 7 caracteres, el segundo campo (año) tiene reservado siempre 4 caracteres, el codigo del pais 3 y el sexo 1. el dato del campo no debe sobre pasar la cantidad de caracteres reservados para no generar inconsistencias y si no utiliza la totalidad de caracteres reservados se debe completar con espacios en blanco
   - **LONG_CHAR_SEPARATOR**:_(int,int,...)_ lista de cantidad de caracteres los campos
   - **IGNORE_ERRORS_DATA**: _(boolean)_ **True** para ignorar el registro actual si tiene alguna inconsistencia y continuar con el siguiente **False** para detener la ejecucion del proceso (ignora todo el registro no solamente el campo inconsistente)
   
