@@ -59,13 +59,14 @@ _configurar el modulo data a traves del archivo .env.data_
 Se encarga de leer el archivo base y de generar un diccionario de datos para la consulta a la api.
 
 **False** se asume que en cada registro el orden de los datos (los fields) no es correspondiente al de las columnas y que no todas las columnas deben tener todos los datos. ejemplo de un registro no tabulado dentro del mismo archivo podria tener la siguiente estructura:
-  
-    > _{"nombre":"Emilton","apellido":"Mendoza ojeda", "sexo":"M"}_
+```  
+{"nombre":"Emilton","apellido":"Mendoza ojeda", "sexo":"M"}
 
-    y esta otra...
-    > _{"apellido":"Garcia Marquez","nombre":"Gabriel Jose de la Concordancia"}_ 
+y esta otra...
 
-    si es **False** no se tendran en cuenta las siguientes propiedades del archivo de configuracion... (listar propiedades) 
+{"apellido":"Garcia Marquez","nombre":"Gabriel"} 
+```
+si es **False** no se tendran en cuenta las siguientes propiedades del archivo de configuracion... (listar propiedades) 
 
 habilita la ejecucion de scripts que modifica al registro cuando aun es una linea de texto, esto permite un amplio rango de posibilidades para la manipulacion de los datos. por ejemplo se puede utilizar para eliminar caracteres especiales, ejemplo las llaves de inicio y de cierre {} de los jsonlines; modificar valores de campos, (ejemplo pasara de formato largo del sexo a corto MASCULINO -> M), etc.
 
