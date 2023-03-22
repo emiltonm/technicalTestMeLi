@@ -348,6 +348,7 @@ descripcion de metodos relevantes.
 - terminar la implementacion de los metodos get y set  de las propiedades que lo necesitan en todos los modulos
 - aplicar concurrencia en los procesos donde sea posible
 - implementar el registro de errores en un archivo de texto que funcione como log
+- correcciones ortograficas de el archivo readme.md
 ###  Modulo data
 - agregar un metodo data_info que retorne la cantidad de registros procesados, la cantidad de registros ignorados
   
