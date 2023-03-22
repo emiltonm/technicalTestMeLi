@@ -264,15 +264,55 @@ Detalle de ejecución:
 ### Propiedades de la clase API
 (-GS) _< string >_ **file_name**: nombre de el archivo de datos a procesar
 
+(---) _< string >_ **url_base**: url base para consulta a la API 
+
+(---) _< string >_ **path**: ruta donde se encuentra el archivo de instrucciones de la API
+
+(---) _< string >_ **file_name**: nombre del archivo de instrucciones 
+
+(---) _< string >_ **full_path**: ruta + nombre del arhivo de instrucciones
+
+(---) _< File >_ **list_file**: apuntador del archivo
+
+(---) _< list[dict] >_ **dict_data**: lista de datos que se van a procesar
+
+(-G-) _< list[dict] >_ **api_data**: diccionario de datos utilizado para las peticiones + los datos obtenidos por las consultas de la API. el metodo get de esta propiedad es llamado get_data()
+
+(---) _< list[int] >_ **data_errors_lines**: lista de numeros de lineas que contienen errores
+
+(---) _< list[str] >_ **data_errors_messages**: lista de mensajes de error
+
+NOTA: algunas propiedades deberian tener metodos get y set establecidos pero por cuestiones de tiempo no fueron implementadas (pero deberian)
 
 ###  Metodos
-descripcion de metodos relevantes
+descripcion de metodos relevantes.
+
+**set_api_data(list[dict])**: pasa a la clase API los datos que se usaran para las consultas
+
+**fetch_url_file()**: se encarga de ejecutar todos los procesos necesarios para la obtencion de los datos de la API desde la lectura del archivo de instrucciones hasta la obtencion de los datos
+
+**get_data()**: retorna una lista de registros procesados que es la lista registro ingresados (con el metodo set_api_data) cada registro actualizados con los campos traidos de la consulta de la API. ejemplo: 
+
+la lista de diccionarios pasada por medio de set_api_data() es:
+``` 
+[{"site":"MLA","id":828617220,"Key":"MLA412445"},{"site":"MLB","id":456,"Key":"MLA456"}]
+```
+la instruccion de consulta a la API es _categories/<Key>->name_
+
+la url de consulta generada para el primer registro es https://api.mercadolibre.com/categories/MLA412445
+
+y de esa consulta tomara la propiedad name
+
+una vez ejecutada la consulta el primer registro quedaria de la forma:
+``` 
+[{"site":"MLA","id":828617220,"Key":"MLA412445","name":"Libros Físicos"},{"site":"MLB","id":456,"Key":"MLA456"}]
+```
 
 # Descripción de modulo database
 Descripcion de la clase
 ### Propiedades
 descripcion de las propiedades importantes
 ###  Metodos
-descripcion de metodos relevantes
+
 
 # Futuras implementaciones
