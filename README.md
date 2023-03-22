@@ -309,10 +309,54 @@ una vez ejecutada la consulta el primer registro quedaria de la forma:
 ```
 
 # Descripción de modulo database
-Descripcion de la clase
-### Propiedades
-descripcion de las propiedades importantes
-###  Metodos
+Nota: _configurar el modulo data a traves del archivo .env.database_
 
+Este modulo se encarga tomar la lista de registros generados por el modulo API y almacenarlos o consultarlos dado el caso.
+
+Flujo de ejecución:
+- apertura y lectura de archivo de configuracion
+  - en caso de no ser posible finaliza la ejecucion del proceso 
+- inicializacion de variables
+- conexion con la base de datos
+- guardar registros de la consulta de la API
+- consultar registros de la consulta de la API
+### Propiedades
+(---) _< string >_ **mongo_uri**: string de conexion a la base de datos
+
+(---) _< mongoClient >_ **mongo_client**: cliente cursor a la base de datos de mongoDB
+
+(---) _< string >_ **mongo_db**: nombre de la base de datos con la cual se conectara
+
+(---) _< string >_ **mongo_collection**: nombre de la coleccion de mongoDB
+
+(---) _< list[int] >_ **data_errors_lines**: lista de indice de registro que contienen errores
+
+(---) _< list[str] >_ **data_errors_messages**: lista de mensajes de error
+
+###  Metodos
+descripcion de metodos relevantes.
+
+**insert_many(list[dict])**: inserta en la base de datos la lista de diccionarios pasada como argumentos
+
+**paginate(n:int,x:int)** muestra los registros de la pagina n donde las paginas tienen x cantidad de elementos 
+
+**count()** devuelve la cantidad de registros almacenados en la base de datos
 
 # Futuras implementaciones
+
+###  General
+- terminar la implementacion de los metodos get y set  de las propiedades que lo necesitan en todos los modulos
+- aplicar concurrencia en los procesos donde sea posible
+- implementar el registro de errores en un archivo de texto que funcione como log
+###  Modulo data
+- agregar un metodo data_info que retorne la cantidad de registros procesados, la cantidad de registros ignorados
+  
+- agregar una propiedad en el archivo de configuracion llamada IGNORE_N_LINES que serviria para saltar los n primeros renglones del archivo de datos, esto para facilitar ignorar informacion de metadatos o comentarios que se encuentran generalmente en el inicio de los archivos
+
+- agregar un metodo fill_with junto a una variable de entorno tipo cabecera:valor_a_cambiar:nuevo_valor,cabecera:valor_a_cambiar:nuevo_valor... que en caso de encontrar cierto valor (puede ser null 0 o cualquier otro) reemplace ese valor por otro actualmente esos registros son ignorados por no poseer informacion suficiente
+
+###  Modulo api
+- agregar un metodo que permita cambiar el nombre de las claves de los registros en lo posible durante la ejecucion de las consultaspara evitar nombres de claves duplicada que generen errores o inconsistencias
+
+###  Modulo database
+- separar la conexion del init de la clase para poder reintentar conexiones en caso de de errores
