@@ -1,4 +1,5 @@
 import re
+import json
 import requests
 from decouple import Config, RepositoryEnv
 from pathlib import Path
@@ -9,10 +10,9 @@ class API:
     __path: str
     __file_name: str
     __full_path: str
-    __list_file = None
     __dict_data: dict = {}
-    __api_data: list = []
-
+    __memory_block: int = 0
+    __full_path_cache: str = ""
     __data_errors_lines: list = []
     __data_errors_messages: list = []
 
@@ -25,6 +25,9 @@ class API:
         else:
             return None
 
+        if Path(self.__full_path_cache).exists():
+            self.__clear_cache()
+
         self.__url_base = config('URL_BASE')
         #  valido que url base termine con / sino lo agrego
         if self.__url_base[-1] != "/":
@@ -34,17 +37,52 @@ class API:
         self.__file_name = config('FILE_API')
         self.__full_path = self.__path/self.__file_name
 
+        self.__memory_block = int(config('MB_BLOCKS_SIZE'))
+        self.__full_path_cache = ""
         # configuracion del manejo de errores
         self.__data_errors_messages.clear()
         self.__data_errors_lines.clear()
 
-    def set_api_data(self, dict_d: dict):
-        self.__dict_data = dict_d.copy()
+    def fetch_api_data(self, data: any):
+        self.__full_path_cache = ""
+        # si data es una lista de diccionario lo copio a la variable dict_data
+        # tambien se puede evaluar de la siguiente manera
+        # if isinstance(data, list) and all(isinstance(elem, dict) for elem in data):
+        # pero podria salir muy cara en cuanto a procesamiento
+        if isinstance(data, list):
+            self.__dict_data = data.copy()
+            self.__process_url_file()
+            return None
+        if not self.__file_exist(data, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
+            self.__dict_data.clear()
+            # necesito saber si estoy trabajando con cache o no
+            # para saber donde guardar la data una vez la procese
+            # tener en cuenta que el api guarda directamente en dict_data
+        else:
+            self.__full_path_cache = data.parent/'api_cache.txt'
+            if self.__full_path_cache.exists():
+                self.__clear_cache()
+            # leo el archivo por bloques
+            print("Procesando archivo de cache...")
+            with open(data, 'r', encoding="utf-8") as file:
+                while True:
+                    # Lee el archivo en bloques de tamaño definido por size_block
+                    block = file.read(
+                        self.__memory_block * 1024 * 1024)
+                    # Si no hay más bloques, finaliza el ciclo
+                    if not block:
+                        break
+                    data_in_text = block.splitlines()
+                    # convierto la lista de strings a una lista de diccionarios
+                    self.__dict_data = [json.loads(s) for s in data_in_text]
+                    self.__process_url_file()
 
-    def __file_exist(self, path: str, error_message: str = "") -> bool:
+    def __file_exist(self, path: str, error_message: str = "", print_in_screen: bool = True) -> bool:
         if path.is_file():
             return True
         else:
+            if print_in_screen:
+                print(error_message)
             # -1 indica que es un error del archivo en general y no en una linea en particular
             self.__report_error(
                 -1, error_message)
@@ -58,16 +96,18 @@ class API:
         for index, error in enumerate(self.__data_errors_messages):
             print(f"Error Linea {self.__data_errors_lines[index]}: {error}")
 
-    def fetch_url_file(self):
+    def __process_url_file(self):
         process_url: str = ""
         key_list: list = []
-        self.__api_data.clear()
-        if self.__file_exist(self.__full_path, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
-            print("Archivo de APIS encontrado")
-            self.__list_file = open(self.__full_path, 'r', encoding="utf-8")
-            for template in self.__list_file:
+        instruction_file = None
+        if not self.__file_exist(self.__full_path, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
+            instruction_file = None
+        else:
+            print("Archivo de instrucciones para las APIS encontrado")
+            instruction_file = open(self.__full_path, 'r', encoding="utf-8")
+            for template in instruction_file:
                 template = template.strip()
-                # salto las lineas en blanco y las que comienzan con #
+                # salto las lineas en blanco y las que comienzan con # para poder comentar
                 if template == "" or template[0] == "#":
                     continue
                 for d in self.__dict_data:
@@ -83,19 +123,21 @@ class API:
                         self.__resolve_url(process_url, d, key_list)
                     print(f"Diccionario: {d}")
 
-            self.__list_file.close()
+            instruction_file.close()
             print("+"*80)
             for i in self.__dict_data:
                 print(i)
-        else:
-            print("Archivo no encontrado")
-            self.__list_file = None
+            # si esta activo el cache guardo la data en el
+            self.__save_cache()
 
     def __resolve_url(self, url: str, data: dict, key_list: list):
-        # agrego al diccionario principal los datos que necesito
-        # data["nuevo_campo"] = "nuevo_valor"
-        # data["new_field"] = "new_value"
-        response = requests.get(url)
+        # agrego al diccionario principal dict_data (llamado data en esta funcion) los datos que necesito
+        try:
+            response = requests.get(url)
+        except requests.exceptions.RequestException as e:
+            print("Error al procesar la url")
+            data["processing_error"] = True
+            return None
 
         if response.status_code == 200:
             # print(f"la respuesta de la url es: {response.json()}")
@@ -113,6 +155,7 @@ class API:
         else:
             data["processing_error"] = True
             print("Error al procesar la url")
+        #
 
     def __parse_string_url(self, template: str, data: dict) -> str:
         print("-"*80)
@@ -123,8 +166,30 @@ class API:
                     template.replace(f"<{tag}>", str(data[tag]))
         return template
 
+    def __save_cache(self):
+        if self.__full_path_cache:
+            print("guardando datos del bloque API en cache")
+            with open(self.__full_path_cache, 'a') as file:
+                for d in self.__dict_data:
+                    json.dump(d, file)
+                    file.write("\n")
+            self.__dict_data.clear()
+            print(f"...{self.__dict_data}")
+
+    def __clear_cache(self):
+        if self.__full_path_cache:
+            print("limpiando api cache")
+            with open(self.__full_path_cache, 'w') as file:
+                file.write("")
+
     # getters
+
     def get_data(self):
-        return self.__dict_data
+        if not self.__full_path_cache:
+            print(f"Data enviada desde memoria")
+            return self.__dict_data.copy()
+        else:
+            print(f"Se envio el archivo de cache API")
+            return self.__full_path_cache
 
     # setters

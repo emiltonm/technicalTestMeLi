@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+import json
 import importlib
 from decouple import Config, RepositoryEnv
 from pathlib import Path
@@ -11,19 +12,26 @@ class Data:
     __file_path: str = ''
     __full_path: str = ''
     __file_encoding: str = ''
-    __raw_file = None
+    __raw_file: list = [str]
+
+    __memory_block: int = 1
+    __first_block: bool = True
+    __data_cache: bool = True
+    __full_path_cache: str = ''
+    __cache_file_name: str = ''
 
     __is_tabulated: bool = False
     __headers_in_first_line: bool = True
     __use_custom_header: bool = False
     __custom_header: list = [str]
     __data_separator: str = ','
-    __ignore_errors: bool = True
     __apply_types: bool = True
     __use_long_char: bool = False
     __size_field: list = [int]
     __headers: list = [str]
     __headers_type: list = [str]
+
+    __ignore_errors: bool = True
     __data_errors_lines: list = [int]
     __data_errors_messages: list = [int]
 
@@ -55,6 +63,23 @@ class Data:
         self.__full_path = self.__file_path/self.__file_name
         # configuracion de los datos del archivo
         self.__file_encoding = config('FILE_ENCODING')
+        self.__memory_block = self.__conversion_type(
+            config('MB_BLOCKS_SIZE'), "int")
+        self.__first_block = True
+        self.__raw_file.clear()
+        self.__data_cache = self.__conversion_type(
+            config('DATA_CACHE'), "bool")
+        self.__cache_file_name = config('CACHE_FILE_NAME')
+
+        self.__full_path_cache = self.__file_path/'cache'
+        # si la carpeta cache no existe la crea
+        if not self.__full_path_cache.exists():
+            self.__full_path_cache.mkdir()
+        self.__full_path_cache = self.__file_path/'cache'/self.__cache_file_name
+        # si estoy iniciando el y ya existe el archivo de cache lo elimino
+        if self.__full_path_cache.exists():
+             self.__clear_cache()
+
         self.__is_tabulated = self.__conversion_type(
             config('FILE_TABULATED'), "bool")
 
@@ -66,6 +91,7 @@ class Data:
             'CUSTOM_HEADER').split(config('SEPARATOR'))
 
         self.__data_separator = config('DATA_SEPARATOR')
+        # convierte las etiquetas TAB o SPACE en los caracteres correspondientes
         self.__format_data_separator()
 
         self.__headers_type = config('HEADERS_TYPE').split(config('SEPARATOR'))
@@ -75,6 +101,7 @@ class Data:
             config('IGNORE_ERRORS_DATA'), "bool")
         self.__use_long_char = self.__conversion_type(
             config('USE_LONG_CHAR_SEPARATOR'), "bool")
+
         self.__size_field = config(
             'LONG_CHAR_SEPARATOR').split(config('SEPARATOR'))
         for i in range(len(self.__size_field)):
@@ -82,6 +109,7 @@ class Data:
                 self.__size_field[i] = int(self.__size_field[i])
             else:
                 self.__size_field[i] = 0
+
         self.__n_line = 0
 
         self.__field_template = config('FIELD_TEMPLATE')
@@ -106,20 +134,24 @@ class Data:
         '''
         self.__data_frame.clear()
         if not self.__file_exist(self.__full_path, "Archivo de datos no encontrado verifica la ruta y el nombre del archivo"):
-            self.__raw_file = None
+            self.__raw_file.clear()
         else:
             print("Procesando archivo de datos...")
-            self.__raw_file = open(self.__full_path, 'r',
-                                   encoding=self.__file_encoding)
-            # si el archivo tiene cabecera le sumo a self.__n_line
-            if self.__headers_in_first_line:
-                self.__n_line += 1
+            with open(self.__full_path, 'r', encoding=self.__file_encoding) as file:
+                while True:
+                    # Lee el archivo en bloques de tamaño definido por size_block
+                    block = file.read(
+                        self.__memory_block * 1024 * 1024)
+                    # Si no hay más bloques, finaliza el ciclo
+                    if not block:
+                        break
 
-            if self.__is_tabulated:
-                self.__process_tabulated_file()
-            else:
-                self.__process_not_tabulated_file()
-            self.__raw_file.close()
+                    self.__raw_file = block.splitlines()
+
+                    if self.__is_tabulated:
+                        self.__process_tabulated_file()
+                    else:
+                        self.__process_not_tabulated_file()
 
     def __process_tabulated_file(self):
         print("Archivo tabulado")
@@ -135,7 +167,9 @@ class Data:
 
         print("="*80)
         for raw_record in self.__raw_file:
-            raw_record = raw_record.strip()
+            if self.__first_block and self.__headers_in_first_line:
+                self.__first_block = False
+                continue
             self.__n_line += 1
             print(f"raw_record es: {raw_record}")
             # ejecutos los scripts que afectan al registro
@@ -164,6 +198,7 @@ class Data:
             # agrego el registro al data frame
             self.__data_frame.append(format_record.copy())
             print("*"*80)
+        self.__save_cache()
 
     def __process_raw_record(self, raw_record: str) -> list[str]:
         raw_fields: list = [str]
@@ -234,8 +269,10 @@ class Data:
         # compilamos la expresion regular para mejoras en el rendimiento
         pattern = re.compile(expression)
         for raw_record in self.__raw_file:
+            if self.__first_block and self.__headers_in_first_line:
+                self.__first_block = False
+                continue
             print("="*80)
-            raw_record = raw_record.strip()
             self.__n_line += 1
             print(f"el raw record es: \'{raw_record}\'")
             #  Elimino los caracteres de inicio y fin de raw record que no necesito
@@ -293,10 +330,11 @@ class Data:
         self.__data_errors_messages.append(error_message)
 
     def __resolve_headers(self):
-        if self.__headers_in_first_line:
-            # capturo la primera linea y obligo a avanzar al "cursor"
-            # para que se posicione en el inicio de los datos
-            first_line_file = self.__raw_file.readline().strip()
+        # si la cabecera esta en la primera linea del archivo y
+        # es el primer bloque de datos
+        if self.__headers_in_first_line and self.__first_block:
+            first_line_file = self.__raw_file[0]
+            self.__n_line += 1
             if self.__use_custom_header:
                 print("Usando cabecera personalizada")
                 self.__headers = self.__custom_header.copy()
@@ -376,15 +414,36 @@ class Data:
             module) if callable(getattr(module, f))]
         return functions
 
+    def __save_cache(self):
+        if self.__data_cache:
+            print("guardando datos del bloque en cache")
+            with open(self.__full_path_cache, 'a') as file:
+                for d in self.__data_frame:
+                    json.dump(d, file)
+                    file.write("\n")
+            self.__data_frame.clear()
+            print(f"...{self.__data_frame}")
+
+    def __clear_cache(self):
+        if self.__data_cache:
+            print("limpiando cache")
+            with open(self.__full_path_cache, 'w') as file:
+                file.write("")
+
     '''
     get functions
     '''
 
-    def get_data(self) -> list:
+    def get_data(self) -> any:
         '''
         retorna una copia de los datos cargados del archivo de datos en formato diccionario
         '''
-        return self.__data_frame.copy()
+        if not self.__data_cache:
+            print(f"Data enviada desde memoria")
+            return self.__data_frame.copy()
+        else:
+            print(f"Se envio el archivo de cache")
+            return self.__full_path_cache
 
     def get_file_name(self) -> str:
         return self.__file_name

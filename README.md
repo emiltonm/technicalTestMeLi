@@ -64,6 +64,7 @@ Flujo de ejecución:
 - inicializacion de variables
 - apertura de archivo de datos
   - en caso de no ser posible finaliza la ejecucion del proceso
+- leer el archivo en bloques de tamaño definido en el archivo de configuracion
 - definir si el archivo es tabulado (formato CSV y parecidos) o no (formato JSONLINES y parecidos)
     - tabulado:
       - se resuelven las cabeceras (nombres de las columnas, claves del diccionario)
@@ -90,6 +91,7 @@ Detalle de ejecución:
   - **SEPARATOR**: _(character)_ caracter separador para las listas DENTRO de este mismo documento (.env.data) no confundir con DATA_SEPARATOR
   - **FILE_PATH**: _(string)_ ruta relativa donde se encuentra el archivo de datos a partir de app.py
   - **FILE_NAME**: _(string)_ nombre del archivo de datos a procesar
+  - **MB_BLOCKS_SIZE**: _(int)_ tamaño en MB de los bloques de lectura del archivo de datos
   - **FILE_ENCODING**: _(string)_ tipo de codificacion del archivo de datos
   - **DATA_SEPARATOR**: _(character or tag)_ caracter que sirve como separador del valor de cada uno de los campos, utilizar las palabras TAB, SPACE para indicar que el separador es un tabulador o espacio en blanco respectivamente
   - **FILE_TABULATED**: _(boolean)_ **True** si el archivo conserva el mismo orden de datos en cada registro ejemplo un CSV y el numero de datos por registro coincide con el numero de columnas 
@@ -141,7 +143,7 @@ Detalle de ejecución:
 
 (---) _< string >_ **file_encoding**: formato de codificacion del archivo
 
-(---) _< File >_ **raw_file**:cursor del archivo de datos
+(---) _< list[str] >_ **raw_file**:bloque del archivo leido en formato texto
 
 (-GS) _< bool >_ **is_tabulated**:True si el archivo es tabulado
 

@@ -1,4 +1,5 @@
 import pymongo
+import json
 from decouple import Config, RepositoryEnv
 from pathlib import Path
 from pymongo.errors import ServerSelectionTimeoutError, OperationFailure
@@ -12,6 +13,7 @@ class Database:
     __data_errors_lines: list = [int]
     __data_errors_messages: list = [int]
     __id_field: str
+    __memory_block: int = 0
 
     def __init__(self):
         # verificamos que el archivo de configuracion existe
@@ -22,15 +24,15 @@ class Database:
         else:
             # el archivo de configuracion existe, cargo las variables de entorno
             config = Config(RepositoryEnv(config_file))
-
+        # tamaño de bloques memoria cache
+        self.__memory_block = int(config('MB_BLOCKS_SIZE'))
         # establecemos la conexion con la base de datos
-        self.__mongo_uri = f"mongodb://{config('MONGO_HOST')}:{config('MONGO_PORT')}"
+        self.__mongo_uri = f"{config('MONGO_PROTOCOL')}://{config('MONGO_HOST')}:{config('MONGO_PORT')}"
         print("-"*80)
         print(self.__mongo_uri)
         print("-"*80)
         try:
-            self.__mongo_client = pymongo.MongoClient(
-                self.__mongo_uri, serverSelectionTimeoutMS=int(config('MONGO_TIMEOUT')))
+            self.__mongo_client = pymongo.MongoClient(self.__mongo_uri)
             self.__mongo_client.server_info()
             print("Conectado a MongoDB")
         except pymongo.errors.ServerSelectionTimeoutError as timeError:
@@ -50,8 +52,45 @@ class Database:
     def insert_one(self, document: dict):
         self.__mongo_collection.insert_one(document)
 
-    def insert_many(self, documents: list):
-        self.__mongo_collection.insert_many(documents)
+    def insert_many(self, data: list):
+        self.__full_path_cache = ""
+        # si data es una lista de diccionario lo envio directamente a la BD
+        # tambien se puede evaluar de la siguiente manera
+        # if isinstance(data, list) and all(isinstance(elem, dict) for elem in data):
+        # pero podria salir muy cara en cuanto a procesamiento
+        if isinstance(data, list):
+            try:
+                print("Insertando datos en la base de datos...")
+                self.__mongo_collection.insert_many(data)
+                print("Datos insertados correctamente")
+            except OperationFailure as error:
+                print("Error al intentar insertar los datos: ", error)
+            return None
+        if not self.__file_exist(data, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
+            return None
+        else:
+            # leo el archivo por bloques
+            print("Procesando archivo de cache de la API para guardar en la BD...")
+            with open(data, 'r', encoding="utf-8") as file:
+                while True:
+                    # Lee el archivo en bloques de tamaño definido por size_block
+                    block = file.read(
+                        self.__memory_block * 1024 * 1024)
+                    # Si no hay más bloques, finaliza el ciclo
+                    if not block:
+                        break
+                    data_in_text = block.splitlines()
+                    # convierto la lista de strings a una lista de diccionarios
+                    dict_data = [json.loads(s) for s in data_in_text]
+
+                    try:
+                        print(
+                            "Insertando datos en la base de datos desde la cache del API...")
+                        self.__mongo_collection.insert_many(dict_data)
+                        print("Datos insertados correctamente")
+                    except OperationFailure as error:
+                        print("Error al intentar insertar los datos: ", error)
+                    return None
 
     def find_one(self, document: dict) -> dict:
         return self.__mongo_collection.find_one(document)

@@ -1,0 +1,45 @@
+version: '3.9'
+networks:
+  app-tier:
+    driver: bridge
+services:
+  database:
+    image: bitnami/mongodb:latest
+    env_file:
+      - .env.database
+    container_name: mongo_container
+    hostname: mongohost
+    volumes:
+      - ./mongo-volume:/bitnami/mongodb
+    ports:
+      - '27018:27017'
+    networks:
+      - app-tier
+  web:
+    env_file:
+      - .env.server
+    container_name: flask_container
+    hostname: localhost
+    build: .
+    entrypoint:
+      - flask
+      - run
+      - --host=0.0.0.0
+    environment:
+      FLASK_DEBUG: 1
+      FLASK_APP: ./app.py
+      FLASK_RUN_HOST: 0.0.0.0
+      TEMPLATES_AUTO_RELOAD: 'True'
+      FLASK_ENV: development
+    ports: 
+      - '5000:5000'
+    links:
+      - database
+    depends_on:
+      - database
+    volumes:
+      - .:/app
+    networks:
+      - app-tier
+volumes:
+  persistent:
