@@ -135,8 +135,8 @@ class Data:
         self.__data_frame.clear()
         if not self.__file_exist(self.__full_path, "Archivo de datos no encontrado verifica la ruta y el nombre del archivo"):
             self.__raw_file.clear()
-        else:
-            print("Procesando archivo de datos...")
+        else: 
+            print(f"Procesando archivo de datos {self.__file_name}...")
             with open(self.__full_path, 'r', encoding=self.__file_encoding) as file:
                 while True:
                     # Lee el archivo en bloques de tamaño definido por size_block
@@ -147,14 +147,16 @@ class Data:
                         break
 
                     self.__raw_file = block.splitlines()
-
+                    print("="*80)
+                    print("PROCESANDO ARCHIVO DE DATOS")
+                    print("="*80)
                     if self.__is_tabulated:
                         self.__process_tabulated_file()
                     else:
                         self.__process_not_tabulated_file()
 
     def __process_tabulated_file(self):
-        print("Archivo tabulado")
+        print("El archivo sera procesado como tabulado")
         raw_record: str = ''
         raw_fields: list = [str]
         format_fields: list = [any]
@@ -165,20 +167,19 @@ class Data:
 
         self.__resolve_headers()
 
-        print("="*80)
         for raw_record in self.__raw_file:
             if self.__first_block and self.__headers_in_first_line:
                 self.__first_block = False
                 continue
             self.__n_line += 1
-            print(f"raw_record es: {raw_record}")
+            print(f"raw_record es:\n{raw_record}")
             # ejecutos los scripts que afectan al registro
             # cuando aun es una linea de texto
             if self.__affect_raw_record:
                 raw_record = self.__execute_scripts(raw_record)
-                print(f"raw_record resultante : {raw_record}")
+                print(f"raw_record despues de ejecutar la lista de scripts :\n{raw_record}")
             raw_fields = self.__process_raw_record(raw_record)
-            print(f"los campos divididos son: {raw_fields}")
+            print(f"los valores del registro son:\n{raw_fields}")
 
             if len(self.__headers) != len(raw_fields):
                 self.__report_error(
@@ -197,7 +198,7 @@ class Data:
             print(f"el registro convertido es: {format_record}")
             # agrego el registro al data frame
             self.__data_frame.append(format_record.copy())
-            print("*"*80)
+            print("-"*80)
         self.__save_cache()
 
     def __process_raw_record(self, raw_record: str) -> list[str]:
@@ -237,7 +238,7 @@ class Data:
                         -1, "Se encontraron errores en el archivo y se ha configurado para que no se ignoren se detuvo la lectura del archivo en la linea {self.__n_line}")
                     break
             format_fields.append(field)
-        print(f"los campos convertido son: {format_fields}")
+        print(f"los valores del registro con su conversion de tipo aplicada son:\n{format_fields}")
         return format_fields.copy()
 
     def __process_not_tabulated_file(self):
@@ -298,7 +299,7 @@ class Data:
             print(f"los valores de los fields formateados son: {fields}")
             #  convierto a diccionario
             format_records = dict(fields)
-            print(f"el registro convertido es: {format_records}")
+            print(f"el registro terminado el proceso es:\n{format_records}")
             # agrego el registro al data frame
             self.__data_frame.append(format_records.copy())
 
@@ -345,7 +346,8 @@ class Data:
                 print("Cabecera no in data - Usando cabecera personalizada")
                 self.__headers = self.__custom_header.copy()
 
-        print(f"los nombres de las cabeceras son: {self.__headers}")
+        print(f"los nombres de las cabeceras son:\n{self.__headers}")
+        print("-"*80)
 
     def __conversion_type(self, str_value: str, convert_type: str) -> any:
         ''' 
@@ -395,7 +397,7 @@ class Data:
                     continue
                 else:
                     print(
-                        f"* El script [{name_script}] modificara la linea de archivo actual")
+                        f"**El script [{name_script}] modificara el raw record actual")
                     scripts = self.__get_script_from_module(name_script)
                     for script in scripts:
                         raw_record = script(raw_record)
@@ -415,18 +417,17 @@ class Data:
         return functions
 
     def __save_cache(self):
-        if self.__data_cache:
-            print("guardando datos del bloque en cache")
+        if self.__data_cache: 
+            print(f"guardando datos en la cache de data [{self.__cache_file_name}]")
             with open(self.__full_path_cache, 'a') as file:
                 for d in self.__data_frame:
                     json.dump(d, file)
                     file.write("\n")
             self.__data_frame.clear()
-            print(f"...{self.__data_frame}")
 
     def __clear_cache(self):
         if self.__data_cache:
-            print("limpiando cache")
+            print("limpiando memoria cache de data")
             with open(self.__full_path_cache, 'w') as file:
                 file.write("")
 
@@ -442,7 +443,7 @@ class Data:
             print(f"Data enviada desde memoria")
             return self.__data_frame.copy()
         else:
-            print(f"Se envio el archivo de cache")
+            print(f"Data enviada como archivo cache [{self.__cache_file_name}]")
             return self.__full_path_cache
 
     def get_file_name(self) -> str:

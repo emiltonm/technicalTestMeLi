@@ -38,7 +38,7 @@ def procesar():
     desde la lectura del archivo fuente de datos hasta la carga de los
     datos en la base de datos
     '''
-    print("ejecutando el microservicio")
+    print("ejecutando el microservicio [procesar] de la ruta [/process]")
     # procesa el archivo fuente de datos lo convierte en un diccionario
     # o en un archivo de cache dependiendo de la configuracion elegida
     # al cual se accede con el metodo get_data()
@@ -61,7 +61,6 @@ def procesar():
 
 
 if __name__ == '__main__':
-    print("entrando a la aplicacion")
     # se obtiene la ruta del archivo de configuracion
     config_file = Path(__file__).resolve().parent/'.env.server'
     # si el archivo de configuracion no existe termino la ejecucion

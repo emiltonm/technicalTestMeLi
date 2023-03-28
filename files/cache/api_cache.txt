@@ -1,5 +1,0 @@
-{"Site": "MLA", "Id": 750925229, "Key": "MLA750925229", "price": 654.04, "start_time": "2018-10-01T22:31:56.000Z", "category_id": "MLA418285", "currency_id": "ARS", "seller_id": 59284503, "name": "Masas y Plastilina", "description": "Peso argentino", "nickname": "VIP.SALE"}
-{"Site": "MLA", "Id": 845041373, "Key": "MLA845041373", "price": 2900, "start_time": "2020-03-22T21:27:57.000Z", "category_id": "MLA420226", "currency_id": "ARS", "seller_id": 78528152, "name": "Displays y LCD", "description": "Peso argentino", "nickname": "CHSKATE"}
-{"Site": "MLA", "Id": 693105237, "Key": "MLA693105237", "processing_error": true}
-{"Site": "MLA", "Id": 806113846, "Key": "MLA806113846", "price": 6565, "start_time": "2019-08-05T23:59:10.000Z", "category_id": "MLA1227", "currency_id": "ARS", "seller_id": 10119554, "name": "Otros", "description": "Peso argentino", "nickname": "TRAETULIBRO"}
-{"Site": "MLA", "Id": 655915616, "Key": "MLA655915616", "processing_error": true}

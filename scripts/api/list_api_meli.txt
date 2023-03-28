@@ -1,4 +1,4 @@
-items?ids=<Key>&attributes=price,start_time,category_id,currency_id,seller_id->price,start_time,category_id,currency_id,seller_id
-categories/<category_id>->name
-currencies/<currency_id>->description
-users/<seller_id>->nickname
+*items?ids=<id>&attributes=price,start_time,category_id,currency_id,seller_id,id->price,start_time,category_id,currency_id,seller_id,id
+-categories/<category_id>->name
+-currencies/<currency_id>->description
+*users/<seller_id>->seller_id,nickname

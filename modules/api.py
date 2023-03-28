@@ -10,11 +10,13 @@ class API:
     __path: str
     __file_name: str
     __full_path: str
-    __dict_data: dict = {}
+    __dict_data: list = []
     __memory_block: int = 0
+    __multiget: int = 0
     __full_path_cache: str = ""
     __data_errors_lines: list = []
     __data_errors_messages: list = []
+    __relation: str = ""
 
     def __init__(self):
         # validar que el archivo de configuracion exista
@@ -38,12 +40,17 @@ class API:
         self.__full_path = self.__path/self.__file_name
 
         self.__memory_block = int(config('MB_BLOCKS_SIZE'))
+        self.__multiget = int(config('MULTIGET'))
+
         self.__full_path_cache = ""
         # configuracion del manejo de errores
         self.__data_errors_messages.clear()
         self.__data_errors_lines.clear()
 
     def fetch_api_data(self, data: any):
+        print("="*80)
+        print("EJECUTANDO MODULO API")
+        print("="*80)
         self.__full_path_cache = ""
         # si data es una lista de diccionario lo copio a la variable dict_data
         # tambien se puede evaluar de la siguiente manera
@@ -63,8 +70,8 @@ class API:
             if self.__full_path_cache.exists():
                 self.__clear_cache()
             # leo el archivo por bloques
-            print("Procesando archivo de cache...")
-            with open(data, 'r', encoding="utf-8") as file:
+            print("Procesando archivo de data cache desde el modulo api")
+            with open(file=data, mode='r', encoding="utf-8") as file:
                 while True:
                     # Lee el archivo en bloques de tamaño definido por size_block
                     block = file.read(
@@ -103,26 +110,49 @@ class API:
         if not self.__file_exist(self.__full_path, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
             instruction_file = None
         else:
-            print("Archivo de instrucciones para las APIS encontrado")
+            print(
+                f"Archivo de instrucciones para las APIS [{self.__file_name}] encontrado")
             instruction_file = open(self.__full_path, 'r', encoding="utf-8")
+            # por cada linea del archivo de instrucciones
             for template in instruction_file:
+                block_data = []
                 template = template.strip()
                 # salto las lineas en blanco y las que comienzan con # para poder comentar
                 if template == "" or template[0] == "#":
+                    print(f"Saltando linea de instruccion en blanco o en comentario")
                     continue
-                for d in self.__dict_data:
+                # ismultiget sera True si el primer caracter de template es un * falso en caso contrario
+                # el * indica que la url se debe procesar con multiget
+                ismultiget = (template[0] == "*") and (self.__multiget > 0)
+                if ismultiget:
+                    # envio los datos en bloques
+                    for i in range(0, len(self.__dict_data), self.__multiget):
+                        block_data.append(
+                            self.__dict_data[i:i+self.__multiget])
+                else:
+                    # bloque de un solo elemento
+                    for i in range(0, len(self.__dict_data), 1):
+                        block_data.append(self.__dict_data[i:i+1])
+                # por cada REGISTRO (d) de la data (dict_data)
+                for d in block_data:
+                    # proceso la plantilla de instrucciones agregando los valores de las llaves
                     # la url es la primera parte de la plantilla separada por ->
                     process_url = self.__parse_string_url(
-                        template.split("->")[0], d)
-                    # los nombres de las llaves son los string que se encuentran despues de ->
-                    print(f"la URL resultante es: {process_url}")
-                    key_list = template.split("->")[1].split(",")
+                        template[1:].split("->")[0], d)
+                    print(
+                        f"la URL resultante despues de procesar la plantilla es:\n{process_url}")
+
+                    # elemento no valido no se agrega al bloque
                     if "processing_error" in d:
+                        print(f"Elemento no valido {d}")
                         continue
-                    else:
+                    # obtengo la lista de variables que voy a guardar de la peticion a la api
+                    # los nombres de las llaves son los string que se encuentran despues de ->
+                    key_list = template.split("->")[1].split(",")
+                    if process_url:
                         self.__resolve_url(process_url, d, key_list)
                     print(f"Diccionario: {d}")
-
+                    # d.clear()
             instruction_file.close()
             print("+"*80)
             for i in self.__dict_data:
@@ -130,46 +160,83 @@ class API:
             # si esta activo el cache guardo la data en el
             self.__save_cache()
 
-    def __resolve_url(self, url: str, data: dict, key_list: list):
-        # agrego al diccionario principal dict_data (llamado data en esta funcion) los datos que necesito
+    def __resolve_url(self, url: str, data: list, key_list: list):
+        #reviso a ver si lo que busco ya esta en cache antes de ejecutar una peticion a la api
+        
+        response = None
         try:
             response = requests.get(url)
         except requests.exceptions.RequestException as e:
-            print("Error al procesar la url")
+            print("Problemas con el request de la url")
             data["processing_error"] = True
             return None
-
         if response.status_code == 200:
             # print(f"la respuesta de la url es: {response.json()}")
             if isinstance(response.json(), list):
-                # un for que extraiga las categorias y las guarde en data
-                if response.json()[0]["code"] == 200:
-                    for key in key_list:
-                        data[key] = response.json()[0]["body"][key]
-                else:
-                    data["processing_error"] = True
-                    print("Error al procesar la url")
+                # por cada registro de la respuesta del json
+                for r in response.json():
+                    if r["code"] == 200:
+                        # el api no devuelve los valores en el orden
+                        # que se le pidio asi que necesito establecer
+                        # una relacion entre mi data y la respuesta del api
+                        # una clave unica y comun
+                        for d in data:
+                            if self.__relation in d:
+                                if d[self.__relation] == r["body"]["id"]:
+                                    for key in key_list:
+                                        if key in r["body"]:
+                                            d[key] = r["body"][key]
+                    else:
+                        for d in data:
+                            if self.__relation in d:
+                                if d[self.__relation] == r["body"]["id"]:
+                                    d["processing_error"] = True
+                                    print("Error al procesar la url")
             else:
-                for key in key_list:
-                    data[key] = response.json()[key]
-        else:
-            data["processing_error"] = True
-            print("Error al procesar la url")
-        #
+                for d in data:
+                    for key in key_list:
+                        if key in response.json():
+                            d[key] = response.json()[key]
+        else:  # es un 404
+            # for d in data:
+            #     d["processing_error"] = True
+            # print("Error al procesar la url")
+            pass
 
-    def __parse_string_url(self, template: str, data: dict) -> str:
+    def __parse_string_url(self, template: str, data: list) -> str:
+        # data es un list[dict]
         print("-"*80)
         print(f"La plantilla a procesar es: {template}")
+        print(data)
+        # busco las llaves en la plantilla y reemplazo por los valores de las llaves
+        # devuelvo las llaves en una lista que se itera con tag
         for tag in re.findall("<(.+?)>", template):
-            if tag in data:
-                template = self.__url_base + \
-                    template.replace(f"<{tag}>", str(data[tag]))
+            # creo el string de los datos para la peticion por bloques
+            items_to_query = ""
+            for d in data:
+                # si la llave tag esta en el diccionario d agrego el valor de la llave a items_to_query
+                if tag in d:
+                    items_to_query += str(d[tag])+","
+                else:
+                    # si la llave no esta en el diccionario creo una llave processing_error con valor True
+                    print(f"Error: la llave {tag} no esta en el diccionario")
+                    d["processing_error"] = True
+            # elimino la ultima coma
+            items_to_query = items_to_query[:-1]
+            if items_to_query:
+                template = template.replace(f"<{tag}>", items_to_query)
+                self.__relation = tag
+            else:
+                template = ""
+                self.__relation = ""
+        if template:
+            template = self.__url_base + template
         return template
 
     def __save_cache(self):
         if self.__full_path_cache:
             print("guardando datos del bloque API en cache")
-            with open(self.__full_path_cache, 'a') as file:
+            with open(file=self.__full_path_cache, mode='a', encoding='utf-8') as file:
                 for d in self.__dict_data:
                     json.dump(d, file)
                     file.write("\n")
@@ -179,7 +246,7 @@ class API:
     def __clear_cache(self):
         if self.__full_path_cache:
             print("limpiando api cache")
-            with open(self.__full_path_cache, 'w') as file:
+            with open(file=self.__full_path_cache, mode='w', encoding='utf-8') as file:
                 file.write("")
 
     # getters
