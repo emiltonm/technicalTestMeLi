@@ -1,6 +1,7 @@
 import re
 import json
 import requests
+from requests import Response
 from decouple import Config, RepositoryEnv
 from pathlib import Path
 
@@ -17,15 +18,18 @@ class API:
     __data_errors_lines: list = []
     __data_errors_messages: list = []
     __relation: str = ""
+    __key_to_request: str = ""
+    __is_persistent_cache: bool = False
+    __persistent_cache_path: str = ""
 
     def __init__(self):
         # validar que el archivo de configuracion exista
         config_file = Path(__file__).resolve().parent.parent/'.env.api'
-        if self.__file_exist(config_file, "Archivo de configuracion data.env no encontrado"):
+        if not self.__file_exist(config_file, "Archivo de configuracion data.env no encontrado"):
+            return None
+        else:
             # Cargar variables de entorno desde un archivo específico
             config = Config(RepositoryEnv(config_file))
-        else:
-            return None
 
         if Path(self.__full_path_cache).exists():
             self.__clear_cache()
@@ -34,10 +38,14 @@ class API:
         #  valido que url base termine con / sino lo agrego
         if self.__url_base[-1] != "/":
             self.__url_base += "/"
+
         self.__path = Path(__file__).resolve(
         ).parent.parent/config('PATH_TO_APIS')
         self.__file_name = config('FILE_API')
         self.__full_path = self.__path/self.__file_name
+
+        self.__persistent_cache_path = Path(__file__).resolve(
+        ).parent.parent/config('PERSISTENT_CACHE_PATH')
 
         self.__memory_block = int(config('MB_BLOCKS_SIZE'))
         self.__multiget = int(config('MULTIGET'))
@@ -52,19 +60,15 @@ class API:
         print("EJECUTANDO MODULO API")
         print("="*80)
         self.__full_path_cache = ""
-        # si data es una lista de diccionario lo copio a la variable dict_data
-        # tambien se puede evaluar de la siguiente manera
-        # if isinstance(data, list) and all(isinstance(elem, dict) for elem in data):
-        # pero podria salir muy cara en cuanto a procesamiento
+        # si data es una lista de diccionario lo copio al diccionario de datos principal (dict_data)
         if isinstance(data, list):
             self.__dict_data = data.copy()
             self.__process_url_file()
             return None
+        # si data no es una lista se asume que es un string con la ruta del archivo donde estan almacenados los datos
+        # esto sucedera cuando se trabaje con cache
         if not self.__file_exist(data, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
             self.__dict_data.clear()
-            # necesito saber si estoy trabajando con cache o no
-            # para saber donde guardar la data una vez la procese
-            # tener en cuenta que el api guarda directamente en dict_data
         else:
             self.__full_path_cache = data.parent/'api_cache.txt'
             if self.__full_path_cache.exists():
@@ -80,6 +84,8 @@ class API:
                     if not block:
                         break
                     data_in_text = block.splitlines()
+                    #elimino posibles entradas redundantes convirtiendo la lista en un set y nuevamente a una lista
+                    data_in_text = list(set(data_in_text))
                     # convierto la lista de strings a una lista de diccionarios
                     self.__dict_data = [json.loads(s) for s in data_in_text]
                     self.__process_url_file()
@@ -107,7 +113,7 @@ class API:
         process_url: str = ""
         key_list: list = []
         instruction_file = None
-        if not self.__file_exist(self.__full_path, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
+        if not self.__file_exist(self.__full_path, "Archivo de instrucciones API no encontrado verifica la ruta y el nombre del archivo"):
             instruction_file = None
         else:
             print(
@@ -121,6 +127,8 @@ class API:
                 if template == "" or template[0] == "#":
                     print(f"Saltando linea de instruccion en blanco o en comentario")
                     continue
+                # si el simbolo es - guardara los datos en un archivo para no tener que consultar el api cada vez
+                self.__is_persistent_cache = (template[0] == "-")
                 # ismultiget sera True si el primer caracter de template es un * falso en caso contrario
                 # el * indica que la url se debe procesar con multiget
                 ismultiget = (template[0] == "*") and (self.__multiget > 0)
@@ -161,15 +169,21 @@ class API:
             self.__save_cache()
 
     def __resolve_url(self, url: str, data: list, key_list: list):
-        #reviso a ver si lo que busco ya esta en cache antes de ejecutar una peticion a la api
-        
+        # reviso a ver si lo que busco ya esta en cache antes de ejecutar una peticion a la api
         response = None
-        try:
-            response = requests.get(url)
-        except requests.exceptions.RequestException as e:
-            print("Problemas con el request de la url")
-            data["processing_error"] = True
-            return None
+        if self.__is_persistent_cache:
+            response = self.__read_persistent_cache(
+                self.__relation, self.__key_to_request)
+        if not response:
+            try:
+                response = requests.get(url)
+            except requests.exceptions.RequestException as e:
+                print("Problemas con el request de la url")
+                # data["processing_error"] = True
+                return None
+        else:
+            print(f"Datos obtenidos de la cache persistente para {self.__relation}: {self.__key_to_request} peticion request no necesaria")
+        
         if response.status_code == 200:
             # print(f"la respuesta de la url es: {response.json()}")
             if isinstance(response.json(), list):
@@ -186,28 +200,72 @@ class API:
                                     for key in key_list:
                                         if key in r["body"]:
                                             d[key] = r["body"][key]
+                                            # guardo en cache persistente el key y su valor
+                                            if self.__is_persistent_cache:
+                                                self.__save_persistent_cache(
+                                                    self.__relation, d[self.__relation], r)
                     else:
                         for d in data:
                             if self.__relation in d:
                                 if d[self.__relation] == r["body"]["id"]:
                                     d["processing_error"] = True
-                                    print("Error al procesar la url")
+                                    print(f"Error al procesar el registro {d}")
             else:
+                r = response.json()
                 for d in data:
                     for key in key_list:
-                        if key in response.json():
-                            d[key] = response.json()[key]
-        else:  # es un 404
-            # for d in data:
-            #     d["processing_error"] = True
+                        if key in r:
+                            d[key] = r[key]
+                            # guardo en cache persistente el key y su valor
+                            if self.__is_persistent_cache:
+                                self.__save_persistent_cache(
+                                    self.__relation, d[self.__relation], r)
+
+        else:  # es un 404 de toda la lista
             # print("Error al procesar la url")
             pass
+
+    def __save_persistent_cache(self, file_name: str, key: str, value: any):
+
+        p_cache = self.__persistent_cache_path / (file_name+".pcache")
+        # si el archivo no existe se crea
+        if not self.__file_exist(p_cache, f"Creando archivo  de cache permanente para {file_name}"):
+            p_cache.touch()
+        # si el archivo existe se revisa si el valor ya esta registrado
+        with open(p_cache, mode='r', encoding='utf-8') as f:
+            for line in f:
+                record = json.loads(line.strip())
+                if key in record:
+                    return
+        # si no esta registrado se guarda en el archivo
+        with open(p_cache, mode='a', encoding='utf-8') as f:
+            record = {key: value}
+            f.write(json.dumps(record, ensure_ascii=False) + '\n')
+            print(
+                f"El dato {record} ha sido guardado en el cache persistente.")
+
+    def __read_persistent_cache(self, file_name: str, key: str):
+        p_cache = self.__persistent_cache_path / (file_name+".pcache")
+        if self.__file_exist(p_cache, f"Buscando en cache permanente para {file_name}"):
+            with open(p_cache, mode='r', encoding='utf-8') as f:
+                for line in f:
+                    record = json.loads(line.strip())
+                    if key in record:
+                        response_json = json.dumps(record[key])
+                        response=requests.models.Response()
+                        response.status_code =200
+                        response.headers['Content-Type'] = 'application/json'
+                        response._content = response_json.encode()
+                        response.encoding = 'utf-8'
+                        response.reason = 'OK'
+                        response.url = 'http://any_url.com'
+                        return response
+        return None
 
     def __parse_string_url(self, template: str, data: list) -> str:
         # data es un list[dict]
         print("-"*80)
         print(f"La plantilla a procesar es: {template}")
-        print(data)
         # busco las llaves en la plantilla y reemplazo por los valores de las llaves
         # devuelvo las llaves en una lista que se itera con tag
         for tag in re.findall("<(.+?)>", template):
@@ -226,9 +284,11 @@ class API:
             if items_to_query:
                 template = template.replace(f"<{tag}>", items_to_query)
                 self.__relation = tag
+                self.__key_to_request = items_to_query
             else:
                 template = ""
                 self.__relation = ""
+                self.__key_to_request = ""
         if template:
             template = self.__url_base + template
         return template
@@ -260,3 +320,4 @@ class API:
             return self.__full_path_cache
 
     # setters
+
