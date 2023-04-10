@@ -36,7 +36,7 @@
   ```
 
 # Configuración
-- cree y configure el archivo .env.data, .env.api, .env.database, .env.server (para esta prueba ya estan creados) 
+- cree y configure el archivo .env.data, .env.api, .env.database, .env.server (para esta prueba ya estan creados) las intrucciones para configurar cada uno de estos archivos se encuentran en las explicaciones de cada modulo 
 
 
 # Ejecución desde contenedor (docker)
