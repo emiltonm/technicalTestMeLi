@@ -126,6 +126,7 @@ Flujo de ejecución:
 - apertura de archivo de datos
   - en caso de no ser posible finaliza la ejecucion del proceso
 - leer el archivo en bloques de tamaño definido en el archivo de configuracion
+- verificar si hay registros redundantes en el bloque y eliminarlos
 - definir si el archivo es tabulado (formato CSV y parecidos) o no (formato JSONLINES y parecidos)
     - tabulado:
       - se resuelven las cabeceras (nombres de las columnas, claves del diccionario)
@@ -136,7 +137,8 @@ Flujo de ejecución:
         - en caso de ser diferente se reporta el error, se ignora el registro y se continua con el siguiente
       - aplicar la conversion de tipos de datos a los valores (si esta activado)
       - convertir el registro en un diccionario juntando las cabeceras con los valores
-      - agrego el registro a la lista data (lista de diccionarios procesados)
+      - si la cache esta activada se guarda el registro en cache
+      - si la cache no esta activada agrego el registro a la lista data (lista de diccionarios procesados)
     - no tabulado:
       - convertir la plantilla HV (explicado en la carga del archivo de configuracion) en una expresion regular
       - lectura de registro como cadena de texto
@@ -144,7 +146,8 @@ Flujo de ejecución:
       - eliminar las comillas dobles del registro (facilita la extraccion de los valores)
       - aplicar scripts sobre el registro (si esta activado)
       - aplicar la expresion regular sobre el registro y convertir el resultado en una diccionario
-      - agregar el registro a la lista data (lista de diccionarios procesados)
+      - si la cache esta activada se guarda el registro en cache
+      - si la cache no esta activado agregar el registro a la lista data (lista de diccionarios procesados)
 - cierra el archivo de datos
 
 Detalle de ejecución:
@@ -154,6 +157,8 @@ Detalle de ejecución:
   - **FILE_NAME**: _(string)_ nombre del archivo de datos a procesar
   - **MB_BLOCKS_SIZE**: _(int)_ tamaño en MB de los bloques de lectura del archivo de datos
   - **FILE_ENCODING**: _(string)_ tipo de codificacion del archivo de datos
+  - **DATA_CACHE**: _(bool)_ True para activar la cache de archivos, usar para cuando se procesan archivos muy grandes
+  - **CACHE_FILE_NAME**: _(string)_ nombre del archivo cache
   - **DATA_SEPARATOR**: _(character or tag)_ caracter que sirve como separador del valor de cada uno de los campos, utilizar las palabras TAB, SPACE para indicar que el separador es un tabulador o espacio en blanco respectivamente
   - **FILE_TABULATED**: _(boolean)_ **True** si el archivo conserva el mismo orden de datos en cada registro ejemplo un CSV y el numero de datos por registro coincide con el numero de columnas 
   - **AFFECT_RAW_RECORD**: _(boolean)_ habilita la ejecucion de scripts que modifica al registro cuando aun es una linea de texto
