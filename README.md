@@ -273,15 +273,17 @@ Este modulo se encarga tomar la lista de registros generados por el modulo Data 
 Flujo de ejecución:
 - apertura y lectura de archivo de configuracion
   - en caso de no ser posible finaliza la ejecucion del proceso 
-- inicializacion de variables
+- inicializacion de variables de entorno
 - paso de registros generados por el modulo Data (metodo set_api_data(registros))
 - procesar el archivo donde se encuentran las instrucciones de consulta(fetch_url_file())
   - en caso de no encontrar el archivo de instrucciones a procesar termina el proceso
+  - en caso de soportar multiget unir la cantidad de claves indicadas en el archivo de configuracion para hacer la peticion en bloques
   - formatea las instrucciones convirtiendola en url de consulta a la API
+  - verificar que la consulta no se realizara anteriormente consultando primero el archivo de cache persistente
   - ejecuta la peticion a la API con la url generada
   - agrega el resultado como una {clave:valor} mas al registro usado para consultar el API
     - en caso de fallar la consulta (error 404) agrega un resultado {"processing_error":True} para no seguir usando ese registro en las siguientes consultas a las API
-- agregar el registro resultante de la peticion a la lista de registros de la api
+- agregar el registro resultante de la peticion a la lista de registros de la api o un archivo de cache y al archivo de chace persistente
 - cierre de archivo de instrucciones
 
 Detalle de ejecución:
@@ -290,7 +292,7 @@ Detalle de ejecución:
   - **URL_BASE**:(string) direccion url mediante el cual se accede al API ejemplo https://api.mercadolibre.com/
   - **FILE_API**: (string) nombre de el archivo donde se encuentran las instrucciones para generar las urls de consultas a las APIs, cada instruccion debe estar en una linea diferente el formato de instruccion es el siguiente:
   
-    **texto_1<clave_1>texto_n<clave_n>->name_prop_1,name_prop_n**
+    **<multiget>texto_1<clave_1>texto_n<clave_n>->name_prop_1,name_prop_n**
 
     donde texto_1 y texto_n son strings "estaticos" que ayudan a construir la url
     
@@ -298,12 +300,13 @@ Detalle de ejecución:
 
     **name_prop_1** y **name_prop_n** son los nombres de las propiedades obtenidas de la consulta que quiero almacenar, estas propiedades deben ir despues de la secuencia de caracteres -> y separadas por comas sin espacios
 
-    ejemplo:
+    **<multiget>** es un indicador de que la consulta se hara en bloques, * si la consulta soporta multiget - si la consulta no soporta multiget
+
     tomando como referencia el API publica de mercado libre, para obtener el nombre de la categoria de un producto la instruccion seria:
 
-    categories/<category_id>->name
-
-    - donde _categories/_ es un texto_n "estatico" que ayuda a formar la url
+    -categories/<category_id>->name
+    - donde el primer caracter - indica que la consulta no soporta multiget
+    - _categories/_ es un texto_n "estatico" que ayuda a formar la url
   
     - _<category_id>_ es una clave valida del diccionario donde estan guardados los datos que se quieren consultar en el api o es una clave valida generada por alguna peticion a la API ejecutada anteriormente
   
@@ -313,9 +316,11 @@ Detalle de ejecución:
 
     otro ejemplo valido de instruccion utilizando el API de mercado libre seria:
     
-    items?ids=<Key>&attributes=price,start_time,category_id,currency_id,seller_id->price,start_time,category_id,currency_id,seller_id
+    *items?ids=<Key>&attributes=price,start_time,category_id,currency_id,seller_id->price,start_time,category_id,currency_id,seller_id
 
-    donde _items?ids=_ es texto complementario
+    donde el asterisco * indica que la consulta soporta multiget
+    
+    _items?ids=_ es texto complementario
     
     _<Key>_ es la clave del producto
 
@@ -327,6 +332,11 @@ Detalle de ejecución:
 
     no hay limite para agregar claves ni para agregar propiedades siempre que sean validas
 
+- **MULTIGET**: (int) cantidad de claves que se van a unir para hacer una peticion en bloque
+
+- **MB_BLOCKS_SIZE**: (int) tamaño de los bloques en el que se dividira el archivo en caso de ser muy grande
+
+- **PERSISTENT_CACHE_PATH**: ruta donde se almacenara los archivo de cache persistente para evitar consultas continuas a la API de elementos ya consultados
 
 
 ### Propiedades de la clase API
@@ -425,7 +435,7 @@ descripcion de metodos relevantes.
 - agregar un metodo fill_with junto a una variable de entorno tipo cabecera:valor_a_cambiar:nuevo_valor,cabecera:valor_a_cambiar:nuevo_valor... que en caso de encontrar cierto valor (puede ser null 0 o cualquier otro) reemplace ese valor por otro actualmente esos registros son ignorados por no poseer informacion suficiente
 
 ###  Modulo api
-- agregar un metodo que permita cambiar el nombre de las claves de los registros en lo posible durante la ejecucion de las consultaspara evitar nombres de claves duplicada que generen errores o inconsistencias
+- agregar un metodo que permita cambiar el nombre de las claves de los registros en lo posible durante la ejecucion de las consultas para evitar nombres de claves duplicada que generen errores o inconsistencias
 
 ###  Modulo database
 - separar la conexion del init de la clase para poder reintentar conexiones en caso de de errores
