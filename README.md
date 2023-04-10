@@ -1,4 +1,65 @@
 # Desafío Técnico Mercado Libre
+
+# Requerimientos
+- python 3.x
+- pip
+- virtualenv
+- Docker
+- mongoDB
+  
+# Permisos necesarios
+- no se requiere ningun permiso externo especial
+  
+# Instalación (si no se desea usar contenedor)
+- Ubicarse en el directorio donde se desea clonar el repositorio
+- Clonar el repositorio 
+  ```
+  git clone https://github.com/emiltonm/templatePython.git
+  ```
+- Instale un entorno virtual
+  ```
+  virtualenv venv
+  ```
+- activa el entorno virtual
+  
+    para windows: 
+    ```
+    .\venv\Scripts\activate
+    ```
+    para linux: 
+    ```
+    source venv/bin/activate
+    ```
+- instale las dependencias
+  ```
+  pip install -r requirements.txt
+  ```
+
+# Configuración
+- cree y configure el archivo .env.data, .env.api, .env.database, .env.server (para esta prueba ya estan creados) 
+
+
+# Ejecución desde contenedor (docker)
+- asegurarse de que el puerto 5000 este disponible para la ejecucion del servicio flask
+- ejecutar el comando docker-compose
+    ```
+    docker-compose up
+    ```
+
+# Ejecución
+- para ejecutar el proyecto sin levantar contenedores ejecute el siguiente comando:
+    ```
+    python ./app.py
+    ```
+  Nota: tener encuenta que la configuracion del host de la base de datos cambia a localhost y al puerto 27017 ejecutandolo desde fuera del contenedor
+
+# Modo de uso
+- el servicio web se ejecuta en  http://localhost:5000/
+- para poner en marcha la prueba acceder a http://localhost:5000/process
+- para buscar un item en la base de datos acceder a http://localhost:5000/find/<str:id_item> ejemplo: http://localhost:5000/find/MLA849015677
+- para mostrar todos los items procesados guardados en la base de datos acceder a http://localhost:5000/show/<int:pagina>/<int:items_por_pagina> ejemplo: http://localhost:5000/show/1/10
+- para mostrar todos los items que generaron algun tipo de error acceder a http://localhost:5000/show/errors/<int:pagina>/<int:items_por_pagina> ejemplo: http://localhost:5000/show/errors/1/10
+
 # Descripción del desafío
 La prueba esta dividida en dos partes una técnica y otra teórica:
 ### Parte técnica
