@@ -76,7 +76,7 @@ class Data:
         if not self.__full_path_cache.exists():
             self.__full_path_cache.mkdir()
         self.__full_path_cache = self.__file_path/'cache'/self.__cache_file_name
-        # si estoy iniciando el y ya existe el archivo de cache lo elimino
+        # si estoy iniciando y ya existe el archivo de cache lo limpio
         if self.__full_path_cache.exists():
              self.__clear_cache()
 
@@ -253,7 +253,7 @@ class Data:
         # escapamos los caracteres especiales
         for char in special_chars:
             expression = expression.replace(char, '\\'+char)
-        # en las siguientes 3 lineas armamos la expresion regular a partir del plantilla de campos
+        # en las siguientes 3 lineas armamos la expresion regular a partir de la plantilla de campos
         # reemplazamos el primer H (header) por la expresion(\w+)
         # que signifca cualquier caracter alfanumerico
         expression = expression.replace('H', '(\w+)', 1)
@@ -285,7 +285,6 @@ class Data:
             raw_record = raw_record.replace('"', '')
             #  ejecuto los scripts
             raw_record = self.__execute_scripts(raw_record)
-            #  Aqui deberia llamar a affect_raw_record
             #  en matches quedan almacenados en una lista de tuplas con formato:
             #  [(header, value), (header, value), (header, value), ...]
             matches = pattern.findall(raw_record)
@@ -295,7 +294,6 @@ class Data:
             for field in fields:
                 #  borro caracteres de espacio en blanco al inicio y al final de cada campo
                 field[1] = field[1].strip()
-                # aplico conversion de tipos
             print(f"los valores de los fields formateados son: {fields}")
             #  convierto a diccionario
             format_records = dict(fields)
@@ -411,7 +409,7 @@ class Data:
         #  recorre todos los objetos que hay dentro del modulo (archivo.py)
         #  estos objetos pueden ser funciones, clases, variables, etc.
         #  si el objeto en callable (es decir una funcion) lo agrega a la lista
-        #  de funtions
+        #  de functions
         functions = [getattr(module, f) for f in dir(
             module) if callable(getattr(module, f))]
         return functions

@@ -2,7 +2,8 @@ import pymongo
 import json
 from decouple import Config, RepositoryEnv
 from pathlib import Path
-from pymongo.errors import ServerSelectionTimeoutError, OperationFailure
+from pymongo.errors import OperationFailure
+from pymongo.errors import ConnectionFailure
 
 
 class Database:
@@ -27,7 +28,7 @@ class Database:
         # tamaño de bloques memoria cache
         self.__memory_block = int(config('MB_BLOCKS_SIZE'))
         # establecemos la conexion con la base de datos
-        self.__mongo_uri = f"{config('MONGO_PROTOCOL')}://{config('MONGO_HOST')}:{config('MONGO_PORT')}"
+        self.__mongo_uri = f"{config('MONGO_PROTOCOL')}://{config('MONGO_HOST')}:{config('MONGO_PORT')}/"
         print("-"*80)
         print(self.__mongo_uri)
         print("-"*80)
@@ -35,16 +36,11 @@ class Database:
             self.__mongo_client = pymongo.MongoClient(self.__mongo_uri)
             self.__mongo_client.server_info()
             print("Conectado a MongoDB")
-        except pymongo.errors.ServerSelectionTimeoutError as timeError:
-            print("Error de conexion se excedido el tiempo: ", timeError)
-            return None
-        except pymongo.errors.ConnectionFailure as connectionError:
-            print("Error de conexion: ", connectionError)
-            return None
+        except ConnectionFailure as e:
+            print("Could not connect to MongoDB: %s" % e)
+
         self.__mongo_db = self.__mongo_client[config('MONGO_DB')]
         self.__mongo_collection = self.__mongo_db[config('MONGO_COLLECTION')]
-
-        # self.__id_field = config('MONGO_ID_FIELD')
 
         # linea para probar la conexion a la base de datos
         # self.__mongo_collection.insert_one({"name": "test"})
@@ -92,35 +88,29 @@ class Database:
                         print("Error al intentar insertar los datos: ", error)
                     return None
 
-    def find_one(self, document: dict) -> dict:
-        return self.__mongo_collection.find_one(document)
+    def find_one(self, document_id: str) -> dict:
+        print(
+            f"ejecutando consulta a la base de datos del registro con id: {document_id}")
+        doc = self.__mongo_collection.find_one({"id": document_id})
+        doc["_id"] = str(doc["_id"])
+        return json.loads(json.dumps(doc))
 
-    def find_many(self, document: dict) -> dict:
-        return self.__mongo_collection.find(document)
-
-    def paginate(self, page: int, limit: int) -> list:
-        return self.__mongo_collection.find().skip((page-1)*limit).limit(limit)
+    def show_all(self, page: int, items_by_page: int) -> list:
+        result = []
+        docs = self.__mongo_collection.find().skip((page-1)*items_by_page).limit(items_by_page)
+        for doc in docs:
+            result.append(json.loads(json.dumps(doc, default=str)))
+        return result
+    
+    def show_errors(self, page: int, items_by_page: int) -> list:
+        result = []
+        docs = self.__mongo_collection.find({"processing_error":True}).skip((page-1)*items_by_page).limit(items_by_page)
+        for doc in docs:
+            result.append(json.loads(json.dumps(doc, default=str)))        
+        return result
 
     def count(self) -> int:
         return self.__mongo_collection.count_documents({})
-
-    def delete_one(self, document: dict):
-        self.__mongo_collection.delete_one(document)
-
-    def delete_many(self, document: dict):
-        self.__mongo_collection.delete_many(document)
-
-    def update_one(self, document: dict, new_document: dict):
-        self.__mongo_collection.update_one(document, new_document)
-
-    def update_many(self, document: dict, new_document: dict):
-        self.__mongo_collection.update_many(document, new_document)
-
-    def __process_document(self, dict_data: dict) -> dict:
-        # cambio el nombre de la llave que se usara como id por _id
-        for dict in dict_data:
-            dict['_id'] = dict.pop(self.__id_field)
-        return dict_data.copy()
 
     def __report_error(self, line: int, error_message: str):
         self.__data_errors_lines.append(line)

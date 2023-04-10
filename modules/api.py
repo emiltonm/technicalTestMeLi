@@ -70,7 +70,7 @@ class API:
         if not self.__file_exist(data, "Archivo no encontrado Verifica la ruta y el nombre del archivo"):
             self.__dict_data.clear()
         else:
-            self.__full_path_cache = data.parent/'api_cache.txt'
+            self.__full_path_cache = data.parent/'api_cache.csv'
             if self.__full_path_cache.exists():
                 self.__clear_cache()
             # leo el archivo por bloques

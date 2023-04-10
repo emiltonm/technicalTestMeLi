@@ -8,7 +8,7 @@ services:
     env_file:
       - .env.database
     container_name: mongo_container
-    hostname: mongohost
+    hostname: localhost
     volumes:
       - ./mongo-volume:/bitnami/mongodb
     ports:
@@ -19,7 +19,7 @@ services:
     env_file:
       - .env.server
     container_name: flask_container
-    hostname: localhost
+    hostname: web
     build: .
     entrypoint:
       - flask
@@ -33,13 +33,9 @@ services:
       FLASK_ENV: development
     ports: 
       - '5000:5000'
-    links:
-      - database
     depends_on:
       - database
     volumes:
       - .:/app
     networks:
       - app-tier
-volumes:
-  persistent:
